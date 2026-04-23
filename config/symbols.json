@@ -1,0 +1,496 @@
+{
+  "symbols": [
+    {
+      "code": "V",
+      "name": "PVC",
+      "exchange": "dce",
+      "pinyin": "pvc"
+    },
+    {
+      "code": "P",
+      "name": "棕榈油",
+      "exchange": "dce",
+      "pinyin": "zly"
+    },
+    {
+      "code": "B",
+      "name": "豆二",
+      "exchange": "dce",
+      "pinyin": "de"
+    },
+    {
+      "code": "M",
+      "name": "豆粕",
+      "exchange": "dce",
+      "pinyin": "dp"
+    },
+    {
+      "code": "I",
+      "name": "铁矿石",
+      "exchange": "dce",
+      "pinyin": "tks"
+    },
+    {
+      "code": "JD",
+      "name": "鸡蛋",
+      "exchange": "dce",
+      "pinyin": "jd"
+    },
+    {
+      "code": "L",
+      "name": "塑料",
+      "exchange": "dce",
+      "pinyin": "塑l"
+    },
+    {
+      "code": "PP",
+      "name": "聚丙烯",
+      "exchange": "dce",
+      "pinyin": "聚a烯"
+    },
+    {
+      "code": "FB",
+      "name": "纤维板",
+      "exchange": "dce",
+      "pinyin": "纤维b"
+    },
+    {
+      "code": "Y",
+      "name": "豆油",
+      "exchange": "dce",
+      "pinyin": "dy"
+    },
+    {
+      "code": "C",
+      "name": "玉米",
+      "exchange": "dce",
+      "pinyin": "ym"
+    },
+    {
+      "code": "A",
+      "name": "豆一",
+      "exchange": "dce",
+      "pinyin": "da"
+    },
+    {
+      "code": "J",
+      "name": "焦炭",
+      "exchange": "dce",
+      "pinyin": "jt"
+    },
+    {
+      "code": "JM",
+      "name": "焦煤",
+      "exchange": "dce",
+      "pinyin": "jm"
+    },
+    {
+      "code": "CS",
+      "name": "淀粉",
+      "exchange": "dce",
+      "pinyin": "淀粉"
+    },
+    {
+      "code": "EG",
+      "name": "乙二醇",
+      "exchange": "dce",
+      "pinyin": "yec"
+    },
+    {
+      "code": "RR",
+      "name": "粳米",
+      "exchange": "dce",
+      "pinyin": "粳m"
+    },
+    {
+      "code": "EB",
+      "name": "苯乙烯",
+      "exchange": "dce",
+      "pinyin": "苯y烯"
+    },
+    {
+      "code": "PG",
+      "name": "液化石油气",
+      "exchange": "dce",
+      "pinyin": "液化sy气"
+    },
+    {
+      "code": "LH",
+      "name": "生猪",
+      "exchange": "dce",
+      "pinyin": "sz"
+    },
+    {
+      "code": "LG",
+      "name": "原木",
+      "exchange": "dce",
+      "pinyin": "y木"
+    },
+    {
+      "code": "BZ",
+      "name": "纯苯",
+      "exchange": "dce",
+      "pinyin": "c苯"
+    },
+    {
+      "code": "TA",
+      "name": "PTA",
+      "exchange": "czce",
+      "pinyin": "pta"
+    },
+    {
+      "code": "OI",
+      "name": "菜油",
+      "exchange": "czce",
+      "pinyin": "cy"
+    },
+    {
+      "code": "RS",
+      "name": "菜籽",
+      "exchange": "czce",
+      "pinyin": "cz"
+    },
+    {
+      "code": "RM",
+      "name": "菜粕",
+      "exchange": "czce",
+      "pinyin": "cp"
+    },
+    {
+      "code": "WH",
+      "name": "强麦",
+      "exchange": "czce",
+      "pinyin": "qm"
+    },
+    {
+      "code": "JR",
+      "name": "粳稻",
+      "exchange": "czce",
+      "pinyin": "粳d"
+    },
+    {
+      "code": "SR",
+      "name": "白糖",
+      "exchange": "czce",
+      "pinyin": "bt"
+    },
+    {
+      "code": "CF",
+      "name": "棉花",
+      "exchange": "czce",
+      "pinyin": "mh"
+    },
+    {
+      "code": "RI",
+      "name": "早籼稻",
+      "exchange": "czce",
+      "pinyin": "zxd"
+    },
+    {
+      "code": "MA",
+      "name": "甲醇",
+      "exchange": "czce",
+      "pinyin": "jc"
+    },
+    {
+      "code": "FG",
+      "name": "玻璃",
+      "exchange": "czce",
+      "pinyin": "bl"
+    },
+    {
+      "code": "LR",
+      "name": "晚籼稻",
+      "exchange": "czce",
+      "pinyin": "晚xd"
+    },
+    {
+      "code": "SF",
+      "name": "硅铁",
+      "exchange": "czce",
+      "pinyin": "gt"
+    },
+    {
+      "code": "SM",
+      "name": "锰硅",
+      "exchange": "czce",
+      "pinyin": "mg"
+    },
+    {
+      "code": "CY",
+      "name": "棉纱",
+      "exchange": "czce",
+      "pinyin": "ms"
+    },
+    {
+      "code": "AP",
+      "name": "苹果",
+      "exchange": "czce",
+      "pinyin": "pg"
+    },
+    {
+      "code": "CJ",
+      "name": "红枣",
+      "exchange": "czce",
+      "pinyin": "hz"
+    },
+    {
+      "code": "UR",
+      "name": "尿素",
+      "exchange": "czce",
+      "pinyin": "ns"
+    },
+    {
+      "code": "SA",
+      "name": "纯碱",
+      "exchange": "czce",
+      "pinyin": "cj"
+    },
+    {
+      "code": "PF",
+      "name": "短纤",
+      "exchange": "czce",
+      "pinyin": "短纤"
+    },
+    {
+      "code": "PK",
+      "name": "花生",
+      "exchange": "czce",
+      "pinyin": "hs"
+    },
+    {
+      "code": "SH",
+      "name": "烧碱",
+      "exchange": "czce",
+      "pinyin": "烧j"
+    },
+    {
+      "code": "PX",
+      "name": "对二甲苯",
+      "exchange": "czce",
+      "pinyin": "对ej苯"
+    },
+    {
+      "code": "PR",
+      "name": "瓶片",
+      "exchange": "czce",
+      "pinyin": "瓶片"
+    },
+    {
+      "code": "PL",
+      "name": "丙烯",
+      "exchange": "czce",
+      "pinyin": "a烯"
+    },
+    {
+      "code": "FU",
+      "name": "燃料油",
+      "exchange": "shfe",
+      "pinyin": "rly"
+    },
+    {
+      "code": "SC",
+      "name": "上海原油",
+      "exchange": "ine",
+      "pinyin": "a海yy"
+    },
+    {
+      "code": "AL",
+      "name": "铝",
+      "exchange": "shfe",
+      "pinyin": "l"
+    },
+    {
+      "code": "RU",
+      "name": "天然橡胶",
+      "exchange": "shfe",
+      "pinyin": "天然xj"
+    },
+    {
+      "code": "ZN",
+      "name": "沪锌",
+      "exchange": "shfe",
+      "pinyin": "hx"
+    },
+    {
+      "code": "CU",
+      "name": "铜",
+      "exchange": "shfe",
+      "pinyin": "t"
+    },
+    {
+      "code": "AU",
+      "name": "黄金",
+      "exchange": "shfe",
+      "pinyin": "hj"
+    },
+    {
+      "code": "RB",
+      "name": "螺纹钢",
+      "exchange": "shfe",
+      "pinyin": "lwg"
+    },
+    {
+      "code": "PB",
+      "name": "铅",
+      "exchange": "shfe",
+      "pinyin": "q"
+    },
+    {
+      "code": "AG",
+      "name": "白银",
+      "exchange": "shfe",
+      "pinyin": "by"
+    },
+    {
+      "code": "BU",
+      "name": "沥青",
+      "exchange": "shfe",
+      "pinyin": "沥青"
+    },
+    {
+      "code": "HC",
+      "name": "热轧卷板",
+      "exchange": "shfe",
+      "pinyin": "rzjb"
+    },
+    {
+      "code": "SN",
+      "name": "锡",
+      "exchange": "shfe",
+      "pinyin": "x"
+    },
+    {
+      "code": "NI",
+      "name": "镍",
+      "exchange": "shfe",
+      "pinyin": "n"
+    },
+    {
+      "code": "SP",
+      "name": "纸浆",
+      "exchange": "shfe",
+      "pinyin": "纸浆"
+    },
+    {
+      "code": "NR",
+      "name": "20号胶",
+      "exchange": "ine",
+      "pinyin": "号j"
+    },
+    {
+      "code": "SS",
+      "name": "不锈钢",
+      "exchange": "shfe",
+      "pinyin": "a锈g"
+    },
+    {
+      "code": "LU",
+      "name": "低硫燃料油",
+      "exchange": "ine",
+      "pinyin": "d硫rly"
+    },
+    {
+      "code": "BC",
+      "name": "国际铜",
+      "exchange": "ine",
+      "pinyin": "g际t"
+    },
+    {
+      "code": "AO",
+      "name": "氧化铝",
+      "exchange": "shfe",
+      "pinyin": "氧化l"
+    },
+    {
+      "code": "BR",
+      "name": "丁二烯橡胶",
+      "exchange": "shfe",
+      "pinyin": "ae烯xj"
+    },
+    {
+      "code": "EC",
+      "name": "集运欧线期货",
+      "exchange": "ine",
+      "pinyin": "jyox期货"
+    },
+    {
+      "code": "AD",
+      "name": "铸造铝合金",
+      "exchange": "shfe",
+      "pinyin": "铸造l合j"
+    },
+    {
+      "code": "OP",
+      "name": "胶版印刷纸",
+      "exchange": "shfe",
+      "pinyin": "j版印s纸"
+    },
+    {
+      "code": "IF",
+      "name": "沪深300期货",
+      "exchange": "cffex",
+      "pinyin": "hs期货"
+    },
+    {
+      "code": "TF",
+      "name": "5年期国债期货",
+      "exchange": "cffex",
+      "pinyin": "n期gz期货"
+    },
+    {
+      "code": "IH",
+      "name": "上证50期货",
+      "exchange": "cffex",
+      "pinyin": "az期货"
+    },
+    {
+      "code": "IC",
+      "name": "中证500期货",
+      "exchange": "cffex",
+      "pinyin": "zz期货"
+    },
+    {
+      "code": "TS",
+      "name": "2年期国债期货",
+      "exchange": "cffex",
+      "pinyin": "n期gz期货"
+    },
+    {
+      "code": "IM",
+      "name": "中证期货",
+      "exchange": "cffex",
+      "pinyin": "zz期货"
+    },
+    {
+      "code": "SI",
+      "name": "工业硅",
+      "exchange": "gfex",
+      "pinyin": "gyg"
+    },
+    {
+      "code": "LC",
+      "name": "碳酸锂",
+      "exchange": "gfex",
+      "pinyin": "tsl"
+    },
+    {
+      "code": "PS",
+      "name": "多晶硅",
+      "exchange": "gfex",
+      "pinyin": "多晶g"
+    },
+    {
+      "code": "PT",
+      "name": "铂",
+      "exchange": "gfex",
+      "pinyin": "铂"
+    },
+    {
+      "code": "PD",
+      "name": "钯",
+      "exchange": "gfex",
+      "pinyin": "钯"
+    }
+  ]
+}

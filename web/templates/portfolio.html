@@ -1,0 +1,648 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>组合分析 - 期货回测系统</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: #f5f7fa;
+            color: #333;
+            line-height: 1.6;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        header {
+            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+            color: white;
+            padding: 30px 0;
+            text-align: center;
+            margin-bottom: 30px;
+            border-radius: 0 0 20px 20px;
+        }
+        header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+        header p {
+            opacity: 0.9;
+            font-size: 1.1em;
+        }
+        .nav-links {
+            margin-top: 15px;
+        }
+        .nav-links a {
+            color: white;
+            text-decoration: none;
+            padding: 8px 20px;
+            border: 2px solid white;
+            border-radius: 20px;
+            margin: 0 10px;
+            transition: all 0.3s;
+        }
+        .nav-links a:hover {
+            background: white;
+            color: #11998e;
+        }
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+        }
+        .card h2 {
+            color: #11998e;
+            margin-bottom: 20px;
+            font-size: 1.3em;
+            border-bottom: 2px solid #f0f0f0;
+            padding-bottom: 10px;
+        }
+        .btn {
+            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+            color: white;
+            border: none;
+            padding: 14px 40px;
+            font-size: 1.1em;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            font-weight: 600;
+        }
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(17, 153, 142, 0.4);
+        }
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .btn-secondary {
+            background: #6c757d;
+            padding: 10px 25px;
+            font-size: 0.95em;
+        }
+        .btn-danger {
+            background: linear-gradient(135deg, #eb3349 0%, #f45c43 100%);
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        .stat-card {
+            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+        }
+        .stat-card .value {
+            font-size: 2em;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        .stat-card .label {
+            opacity: 0.9;
+            font-size: 0.9em;
+        }
+        .stat-card.positive {
+            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+        }
+        .stat-card.negative {
+            background: linear-gradient(135deg, #eb3349 0%, #f45c43 100%);
+        }
+        .chart-container {
+            position: relative;
+            height: 400px;
+            margin: 20px 0;
+        }
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #11998e;
+        }
+        .loading::after {
+            content: '';
+            display: inline-block;
+            width: 30px;
+            height: 30px;
+            border: 3px solid #11998e;
+            border-top-color: transparent;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-left: 10px;
+            vertical-align: middle;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        .error {
+            background: #fee;
+            color: #c33;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+        }
+        .success {
+            background: #efe;
+            color: #3c3;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+        }
+        .tabs {
+            display: flex;
+            gap: 5px;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #e0e0e0;
+            flex-wrap: wrap;
+        }
+        .tab {
+            padding: 12px 25px;
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+            transition: all 0.3s;
+            font-weight: 600;
+            color: #666;
+        }
+        .tab.active {
+            color: #11998e;
+            border-bottom-color: #11998e;
+        }
+        .tab:hover {
+            color: #11998e;
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
+        .hidden {
+            display: none !important;
+        }
+        .selection-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 12px;
+            max-height: 400px;
+            overflow-y: auto;
+            padding: 10px;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+        }
+        .selection-item {
+            display: flex;
+            align-items: center;
+            padding: 12px 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            cursor: pointer;
+            border: 2px solid transparent;
+            transition: all 0.2s;
+        }
+        .selection-item:hover {
+            border-color: #11998e;
+        }
+        .selection-item.selected {
+            border-color: #11998e;
+            background: #e8f8f5;
+        }
+        .selection-item input {
+            margin-right: 12px;
+            width: 18px;
+            height: 18px;
+        }
+        .selection-item .info {
+            flex: 1;
+        }
+        .selection-item .title {
+            font-weight: 600;
+            color: #333;
+        }
+        .selection-item .meta {
+            font-size: 0.85em;
+            color: #666;
+            margin-top: 2px;
+        }
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: #999;
+        }
+        .empty-state a {
+            color: #11998e;
+        }
+        .selected-count {
+            background: #11998e;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 0.9em;
+            margin-left: 10px;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>组合分析</h1>
+        <p>选择多个同时段的回测结果，生成组合收益和风险分析</p>
+        <div class="nav-links">
+            <a href="/">回测主页</a>
+        </div>
+    </header>
+
+    <div class="container">
+        <!-- 选择回测结果 -->
+        <div class="card">
+            <h2>选择回测结果 <span class="selected-count" id="selectedCount">0</span></h2>
+            <p style="color: #666; margin-bottom: 15px;">请选择至少2个时间区间有重叠的回测结果进行组合分析</p>
+            <div id="resultsList" class="selection-grid"></div>
+            <div style="margin-top: 20px;">
+                <button class="btn" onclick="analyzePortfolio()" id="analyzeBtn">生成组合分析</button>
+                <button class="btn btn-secondary" onclick="clearSelection()">清空选择</button>
+            </div>
+            <div id="message"></div>
+        </div>
+
+        <!-- 组合统计指标 -->
+        <div class="card hidden" id="statsCard">
+            <h2>组合统计指标</h2>
+            <div class="stats-grid" id="statsGrid"></div>
+        </div>
+
+        <!-- 组合图表 -->
+        <div class="card hidden" id="chartsCard">
+            <h2>组合图表</h2>
+            <div class="tabs">
+                <div class="tab active" data-tab="equity">组合资金曲线</div>
+                <div class="tab" data-tab="drawdown">组合回撤曲线</div>
+                <div class="tab" data-tab="daily">组合日收益</div>
+                <div class="tab" data-tab="components">各品种对比</div>
+            </div>
+            <div class="tab-content active" id="tab-equity">
+                <div class="chart-container">
+                    <canvas id="equityChart"></canvas>
+                </div>
+            </div>
+            <div class="tab-content" id="tab-drawdown">
+                <div class="chart-container">
+                    <canvas id="drawdownChart"></canvas>
+                </div>
+            </div>
+            <div class="tab-content" id="tab-daily">
+                <div class="chart-container">
+                    <canvas id="dailyChart"></canvas>
+                </div>
+            </div>
+            <div class="tab-content" id="tab-components">
+                <div class="chart-container">
+                    <canvas id="componentsChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let charts = {};
+        let selectedIds = new Set();
+        let resultsData = [];
+
+        // Tab切换
+        document.querySelectorAll('.tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+                document.getElementById('tab-' + tab.dataset.tab).classList.add('active');
+            });
+        });
+
+        // 加载回测结果列表
+        async function loadResults() {
+            try {
+                const response = await fetch('/api/results');
+                const data = await response.json();
+                resultsData = data.results || [];
+                renderResults();
+            } catch (err) {
+                document.getElementById('resultsList').innerHTML = 
+                    '<div class="error">加载失败: ' + err.message + '</div>';
+            }
+        }
+
+        // 渲染结果列表
+        function renderResults() {
+            const list = document.getElementById('resultsList');
+            
+            if (resultsData.length === 0) {
+                list.innerHTML = '<div class="empty-state">暂无回测结果，请先<a href="/">运行回测</a></div>';
+                return;
+            }
+
+            list.innerHTML = resultsData.map(r => {
+                const parts = r.id.split('_');
+                const symbol = parts[0] || '';
+                const strategy = parts[1] || '';
+                const startDate = parts[2] || '';
+                const endDate = parts[3] || '';
+                const leverage = parts[4] || '';
+                
+                return `
+                    <div class="selection-item ${selectedIds.has(r.id) ? 'selected' : ''}" onclick="toggleSelection('${r.id}')">
+                        <input type="checkbox" ${selectedIds.has(r.id) ? 'checked' : ''} onclick="event.stopPropagation()">
+                        <div class="info">
+                            <div class="title">${symbol} <span style="font-size: 0.85em; color: #666;">(${strategy})</span></div>
+                            <div class="meta">${startDate} ~ ${endDate} | 杠杆: ${leverage}</div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+            
+            updateSelectedCount();
+        }
+
+        // 切换选择
+        function toggleSelection(id) {
+            if (selectedIds.has(id)) {
+                selectedIds.delete(id);
+            } else {
+                selectedIds.add(id);
+            }
+            renderResults();
+        }
+
+        // 更新选中数量
+        function updateSelectedCount() {
+            document.getElementById('selectedCount').textContent = selectedIds.size;
+        }
+
+        // 清空选择
+        function clearSelection() {
+            selectedIds.clear();
+            renderResults();
+            document.getElementById('statsCard').classList.add('hidden');
+            document.getElementById('chartsCard').classList.add('hidden');
+            document.getElementById('message').innerHTML = '';
+        }
+
+        // 组合分析
+        async function analyzePortfolio() {
+            const ids = Array.from(selectedIds);
+            const msg = document.getElementById('message');
+            const btn = document.getElementById('analyzeBtn');
+            
+            if (ids.length < 2) {
+                msg.innerHTML = '<div class="error">请至少选择2个回测结果</div>';
+                return;
+            }
+            
+            btn.disabled = true;
+            msg.innerHTML = '<div class="loading">正在计算组合分析...</div>';
+            
+            try {
+                const response = await fetch('/api/portfolio', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ ids: ids })
+                });
+                
+                const result = await response.json();
+                
+                if (!result.success) {
+                    throw new Error(result.error || '组合分析失败');
+                }
+                
+                msg.innerHTML = '<div class="success">组合分析完成！品种: ' + result.symbols.join(', ') + 
+                    ' | 共同时间段: ' + result.common_start + ' ~ ' + result.common_end + '</div>';
+                
+                displayStats(result.statistics);
+                drawEquityChart(result.daily_records);
+                drawDrawdownChart(result.daily_records);
+                drawDailyChart(result.daily_records);
+                drawComponentsChart(result.daily_records);
+                
+                document.getElementById('statsCard').classList.remove('hidden');
+                document.getElementById('chartsCard').classList.remove('hidden');
+            } catch (err) {
+                msg.innerHTML = '<div class="error">错误: ' + err.message + '</div>';
+            } finally {
+                btn.disabled = false;
+            }
+        }
+
+        // 显示统计指标
+        function displayStats(stats) {
+            const grid = document.getElementById('statsGrid');
+            const totalReturn = parseFloat(stats.total_return);
+            const annualReturn = parseFloat(stats.annual_return);
+            
+            grid.innerHTML = `
+                <div class="stat-card ${totalReturn >= 0 ? 'positive' : 'negative'}">
+                    <div class="value">${(totalReturn * 100).toFixed(2)}%</div>
+                    <div class="label">组合总收益率</div>
+                </div>
+                <div class="stat-card ${annualReturn >= 0 ? 'positive' : 'negative'}">
+                    <div class="value">${(annualReturn * 100).toFixed(2)}%</div>
+                    <div class="label">组合年化收益率</div>
+                </div>
+                <div class="stat-card">
+                    <div class="value">${(parseFloat(stats.max_drawdown_ratio) * 100).toFixed(2)}%</div>
+                    <div class="label">组合最大回撤</div>
+                </div>
+                <div class="stat-card">
+                    <div class="value">${parseFloat(stats.sharpe_ratio).toFixed(2)}</div>
+                    <div class="label">组合夏普比率</div>
+                </div>
+                <div class="stat-card">
+                    <div class="value">${parseFloat(stats.calmar_ratio).toFixed(2)}</div>
+                    <div class="label">组合卡玛比率</div>
+                </div>
+                <div class="stat-card">
+                    <div class="value">${stats.trading_days}</div>
+                    <div class="label">交易天数</div>
+                </div>
+                <div class="stat-card">
+                    <div class="value">${stats.total_trades}</div>
+                    <div class="label">总交易次数</div>
+                </div>
+                <div class="stat-card">
+                    <div class="value">${(parseFloat(stats.win_rate) * 100).toFixed(2)}%</div>
+                    <div class="label">胜率</div>
+                </div>
+            `;
+        }
+
+        // 绘制资金曲线
+        function drawEquityChart(records) {
+            const ctx = document.getElementById('equityChart').getContext('2d');
+            if (charts.equity) charts.equity.destroy();
+            
+            charts.equity = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: records.map(r => r.date),
+                    datasets: [{
+                        label: '组合净值',
+                        data: records.map(r => parseFloat(r.total_value)),
+                        borderColor: '#11998e',
+                        backgroundColor: 'rgba(17, 153, 142, 0.1)',
+                        fill: true,
+                        tension: 0.1,
+                        pointRadius: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: { intersect: false, mode: 'index' },
+                    plugins: {
+                        title: { display: true, text: '组合资金曲线' },
+                        tooltip: { callbacks: { label: (ctx) => '净值: ' + ctx.parsed.y.toFixed(4) } }
+                    },
+                    scales: { y: { beginAtZero: false } }
+                }
+            });
+        }
+
+        // 绘制回撤曲线
+        function drawDrawdownChart(records) {
+            const ctx = document.getElementById('drawdownChart').getContext('2d');
+            if (charts.drawdown) charts.drawdown.destroy();
+            
+            let peak = 1;
+            const drawdowns = records.map(r => {
+                const val = parseFloat(r.total_value);
+                if (val > peak) peak = val;
+                return (peak - val) / peak;
+            });
+            
+            charts.drawdown = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: records.map(r => r.date),
+                    datasets: [{
+                        label: '回撤比例',
+                        data: drawdowns,
+                        borderColor: '#eb3349',
+                        backgroundColor: 'rgba(235, 51, 73, 0.1)',
+                        fill: true,
+                        tension: 0.1,
+                        pointRadius: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        title: { display: true, text: '组合回撤曲线' },
+                        tooltip: { callbacks: { label: (ctx) => '回撤: ' + (ctx.parsed.y * 100).toFixed(2) + '%' } }
+                    },
+                    scales: { y: { beginAtZero: true, ticks: { callback: (v) => (v * 100).toFixed(1) + '%' } } }
+                }
+            });
+        }
+
+        // 绘制日收益
+        function drawDailyChart(records) {
+            const ctx = document.getElementById('dailyChart').getContext('2d');
+            if (charts.daily) charts.daily.destroy();
+            
+            const returns = records.map(r => parseFloat(r.daily_return));
+            const colors = returns.map(r => r >= 0 ? '#38ef7d' : '#f45c43');
+            
+            charts.daily = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: records.map(r => r.date),
+                    datasets: [{
+                        label: '日收益率',
+                        data: returns,
+                        backgroundColor: colors,
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        title: { display: true, text: '组合每日收益率' },
+                        tooltip: { callbacks: { label: (ctx) => '日收益: ' + (ctx.parsed.y * 100).toFixed(4) + '%' } }
+                    },
+                    scales: { y: { ticks: { callback: (v) => (v * 100).toFixed(2) + '%' } } }
+                }
+            });
+        }
+
+        // 绘制各品种对比
+        function drawComponentsChart(records) {
+            const ctx = document.getElementById('componentsChart').getContext('2d');
+            if (charts.components) charts.components.destroy();
+            
+            const labels = records.map(r => r.date);
+            const datasets = [];
+            
+            const symbols = new Set();
+            records.forEach(r => {
+                if (r.components) {
+                    Object.keys(r.components).forEach(s => symbols.add(s));
+                }
+            });
+            
+            const colors = ['#667eea', '#11998e', '#eb3349', '#f093fb', '#f5576c', '#4facfe', '#43e97b', '#fa709a'];
+            let colorIdx = 0;
+            
+            symbols.forEach(symbol => {
+                const data = records.map(r => {
+                    if (r.components && r.components[symbol]) {
+                        return parseFloat(r.components[symbol]);
+                    }
+                    return null;
+                });
+                
+                datasets.push({
+                    label: symbol,
+                    data: data,
+                    borderColor: colors[colorIdx % colors.length],
+                    backgroundColor: 'transparent',
+                    pointRadius: 0,
+                    tension: 0.1,
+                    spanGaps: true
+                });
+                colorIdx++;
+            });
+            
+            charts.components = new Chart(ctx, {
+                type: 'line',
+                data: { labels: labels, datasets: datasets },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: { intersect: false, mode: 'index' },
+                    plugins: {
+                        title: { display: true, text: '各品种净值对比（归一化）' },
+                        tooltip: { callbacks: { label: (ctx) => ctx.dataset.label + ': ' + ctx.parsed.y.toFixed(4) } }
+                    },
+                    scales: { y: { beginAtZero: false } }
+                }
+            });
+        }
+
+        // 页面加载
+        loadResults();
+    </script>
+</body>
+</html>

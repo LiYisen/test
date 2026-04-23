@@ -1,0 +1,22 @@
+{
+  "strategies": [
+    {
+      "name": "yinyang",
+      "display_name": "阴阳线突破策略",
+      "description": "基于阴阳线形态的趋势跟踪策略，通过识别连续阳线和连续阴线形成的阴阳集合，在价格突破集合边界时产生交易信号",
+      "params": [
+        {
+          "name": "leverage",
+          "display_name": "杠杆系数",
+          "type": "float",
+          "default": 3.0,
+          "min": 0.1,
+          "max": 10.0,
+          "description": "账户承担的百分比风险系数"
+        }
+      ],
+      "enabled": true
+    }
+  ],
+  "default_strategy": "yinyang"
+}
