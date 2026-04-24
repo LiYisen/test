@@ -13,6 +13,7 @@ import (
 	"futures-backtest/pkg/pyexec"
 
 	"github.com/gin-gonic/gin"
+	"github.com/shopspring/decimal"
 )
 
 // Server Web服务器
@@ -93,11 +94,12 @@ func corsMiddleware() gin.HandlerFunc {
 
 // BacktestRequest 回测请求
 type BacktestRequest struct {
-	Symbol    string  `json:"symbol" binding:"required"`
-	StartDate string  `json:"start_date" binding:"required"`
-	EndDate   string  `json:"end_date" binding:"required"`
-	Leverage  float64 `json:"leverage"`
-	Strategy  string  `json:"strategy"`
+	Symbol    string                 `json:"symbol" binding:"required"`
+	StartDate string                 `json:"start_date" binding:"required"`
+	EndDate   string                 `json:"end_date" binding:"required"`
+	Leverage  float64                `json:"leverage"`
+	Strategy  string                 `json:"strategy"`
+	Params    map[string]interface{} `json:"params"`
 }
 
 // BacktestResponse 回测响应
@@ -207,28 +209,22 @@ func (s *Server) runBacktest(req BacktestRequest, resultID string) (*BacktestRes
 		return nil, fmt.Errorf("获取策略失败: %w", err)
 	}
 
-	params := map[string]interface{}{
-		"leverage": req.Leverage,
+	params := make(map[string]interface{})
+	if req.Params != nil {
+		for k, v := range req.Params {
+			params[k] = v
+		}
 	}
+	if _, ok := params["leverage"]; !ok {
+		params["leverage"] = req.Leverage
+	}
+
 	sigStrategy := factory.Create(params)
 
-	var signalEngine *backtest.SignalEngine
-	var stateRecorder backtest.StateRecorder
+	rollover := factory.CreateRolloverHandler(sigStrategy)
+	stateRecorder := factory.CreateStateRecorder()
 
-	if req.Strategy == "yinyang" {
-		adapter, ok := sigStrategy.(*strategy.YinYangAdapter)
-		if !ok {
-			return nil, fmt.Errorf("策略类型转换失败")
-		}
-		yinyangStrategy := adapter.GetStrategy()
-		rollover := strategy.NewYinYangRolloverHandler(yinyangStrategy)
-		signalEngine = backtest.NewSignalEngine(allKlines, dominantMap, sigStrategy, rollover)
-		stateRecorder = strategy.NewYinYangStateRecorder()
-	} else {
-		signalEngine = backtest.NewSignalEngine(allKlines, dominantMap, sigStrategy, nil)
-		stateRecorder = backtest.NewDefaultStateRecorder()
-	}
-
+	signalEngine := backtest.NewSignalEngine(allKlines, dominantMap, sigStrategy, rollover)
 	signalEngine.SetStateRecorder(stateRecorder)
 
 	signals, err := signalEngine.Calculate()
@@ -405,19 +401,22 @@ func (s *Server) handleGetResultData(c *gin.Context) {
 
 	switch dataType {
 	case "daily":
-		c.JSON(http.StatusOK, gin.H{"daily_records": convertDailyRecords(result.DailyRecords)})
+		c.JSON(http.StatusOK, gin.H{"daily_records": convertDailyRecordsWithSignals(result.DailyRecords, result.Signals)})
 	case "signals":
 		c.JSON(http.StatusOK, gin.H{"signals": convertSignals(result.Signals)})
 	case "returns":
 		c.JSON(http.StatusOK, gin.H{"position_returns": convertPositionReturns(result.PositionReturns)})
 	case "stats":
 		c.JSON(http.StatusOK, gin.H{"statistics": convertStatistics(result.Statistics)})
+	case "klines":
+		c.JSON(http.StatusOK, gin.H{"klines": convertKlines(result.Klines, result.Signals)})
 	default:
 		c.JSON(http.StatusOK, gin.H{
-			"daily_records":    convertDailyRecords(result.DailyRecords),
+			"daily_records":    convertDailyRecordsWithSignals(result.DailyRecords, result.Signals),
 			"signals":          convertSignals(result.Signals),
 			"position_returns": convertPositionReturns(result.PositionReturns),
 			"statistics":       convertStatistics(result.Statistics),
+			"klines":           convertKlines(result.Klines, result.Signals),
 		})
 	}
 }
@@ -443,14 +442,74 @@ func convertStatistics(stats backtest.Statistics) map[string]interface{} {
 }
 
 func convertDailyRecords(records []backtest.DailyRecord) []map[string]interface{} {
+	if len(records) == 0 {
+		return []map[string]interface{}{}
+	}
+
 	result := make([]map[string]interface{}, len(records))
+
+	peak := records[0].TotalValue
 	for i, r := range records {
+		if r.TotalValue.GreaterThan(peak) {
+			peak = r.TotalValue
+		}
+
+		drawdown := decimal.Zero
+		if peak.GreaterThan(decimal.Zero) {
+			drawdown = peak.Sub(r.TotalValue).Div(peak)
+		}
+
 		result[i] = map[string]interface{}{
 			"date":         r.Date,
 			"total_value":  r.TotalValue.StringFixed(4),
 			"daily_return": r.DailyReturn.StringFixed(6),
 			"pnl":          r.PnL.StringFixed(4),
+			"drawdown":     drawdown.StringFixed(6),
 		}
+	}
+	return result
+}
+
+func convertDailyRecordsWithSignals(records []backtest.DailyRecord, signals []backtest.TradeSignal) []map[string]interface{} {
+	if len(records) == 0 {
+		return []map[string]interface{}{}
+	}
+
+	signalMap := make(map[string][]map[string]interface{})
+	for _, s := range signals {
+		signalMap[s.SignalDate] = append(signalMap[s.SignalDate], map[string]interface{}{
+			"direction": s.Direction.String(),
+			"type":      s.SignalType,
+			"price":     s.Price.StringFixed(2),
+		})
+	}
+
+	result := make([]map[string]interface{}, len(records))
+
+	peak := records[0].TotalValue
+	for i, r := range records {
+		if r.TotalValue.GreaterThan(peak) {
+			peak = r.TotalValue
+		}
+
+		drawdown := decimal.Zero
+		if peak.GreaterThan(decimal.Zero) {
+			drawdown = peak.Sub(r.TotalValue).Div(peak)
+		}
+
+		record := map[string]interface{}{
+			"date":         r.Date,
+			"total_value":  r.TotalValue.StringFixed(4),
+			"daily_return": r.DailyReturn.StringFixed(6),
+			"pnl":          r.PnL.StringFixed(4),
+			"drawdown":     drawdown.StringFixed(6),
+		}
+
+		if signalList, exists := signalMap[r.Date]; exists {
+			record["signals"] = signalList
+		}
+
+		result[i] = record
 	}
 	return result
 }
@@ -466,6 +525,41 @@ func convertSignals(signals []backtest.TradeSignal) []map[string]interface{} {
 			"leverage":  s.Leverage.StringFixed(2),
 			"type":      s.SignalType,
 		}
+	}
+	return result
+}
+
+func convertKlines(klines []backtest.KLineWithContract, signals []backtest.TradeSignal) []map[string]interface{} {
+	if len(klines) == 0 {
+		return []map[string]interface{}{}
+	}
+
+	signalMap := make(map[string][]map[string]interface{})
+	for _, s := range signals {
+		signalMap[s.SignalDate] = append(signalMap[s.SignalDate], map[string]interface{}{
+			"direction": s.Direction.String(),
+			"type":      s.SignalType,
+			"price":     s.Price.StringFixed(2),
+		})
+	}
+
+	result := make([]map[string]interface{}, len(klines))
+	for i, k := range klines {
+		kline := map[string]interface{}{
+			"date":   k.Date,
+			"symbol": k.Symbol,
+			"open":   k.Open,
+			"high":   k.High,
+			"low":    k.Low,
+			"close":  k.Close,
+			"volume": k.Volume,
+		}
+
+		if signalList, exists := signalMap[k.Date]; exists {
+			kline["signals"] = signalList
+		}
+
+		result[i] = kline
 	}
 	return result
 }

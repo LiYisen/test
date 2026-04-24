@@ -16,6 +16,41 @@
         }
       ],
       "enabled": true
+    },
+    {
+      "name": "ma",
+      "display_name": "双均线交叉策略",
+      "description": "基于双均线交叉的趋势跟踪策略，短期均线上穿长期均线产生做多信号（金叉），短期均线下穿长期均线产生做空信号（死叉），信号在下一根K线开盘价执行",
+      "params": [
+        {
+          "name": "short_period",
+          "display_name": "短期均线周期",
+          "type": "int",
+          "default": 5,
+          "min": 2,
+          "max": 50,
+          "description": "短期移动平均线的计算周期"
+        },
+        {
+          "name": "long_period",
+          "display_name": "长期均线周期",
+          "type": "int",
+          "default": 20,
+          "min": 5,
+          "max": 200,
+          "description": "长期移动平均线的计算周期"
+        },
+        {
+          "name": "leverage",
+          "display_name": "杠杆系数",
+          "type": "float",
+          "default": 1.0,
+          "min": 0.1,
+          "max": 10.0,
+          "description": "账户承担的百分比风险系数"
+        }
+      ],
+      "enabled": true
     }
   ],
   "default_strategy": "yinyang"

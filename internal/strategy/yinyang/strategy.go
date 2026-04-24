@@ -7,7 +7,7 @@ import (
 )
 
 type YinYangStrategy struct {
-	stateManagers map[string]*StateManager
+	stateManagers  map[string]*StateManager
 	leverageFactor decimal.Decimal
 
 	position *backtest.SignalPosition
@@ -17,14 +17,14 @@ type YinYangStrategy struct {
 
 	reverseSignalPrice decimal.Decimal
 
-	ready                bool
-	currentSymbol        string
-	hasEverHeldPosition  bool
+	ready               bool
+	currentSymbol       string
+	hasEverHeldPosition bool
 }
 
 func NewYinYangStrategy(leverageFactor float64) *YinYangStrategy {
 	return &YinYangStrategy{
-		stateManagers: make(map[string]*StateManager),
+		stateManagers:  make(map[string]*StateManager),
 		leverageFactor: decimal.NewFromFloat(leverageFactor / 100.0),
 	}
 }
@@ -53,20 +53,20 @@ func (s *YinYangStrategy) SetCurrentSymbol(symbol string) {
 	s.currentSymbol = symbol
 }
 
-func (s *YinYangStrategy) State() backtest.YinYangState {
+func (s *YinYangStrategy) State() YinYangState {
 	if s.currentSymbol == "" {
-		return backtest.YinYangState{}
+		return YinYangState{}
 	}
 	return s.stateManagers[s.currentSymbol].State()
 }
 
-func (s *YinYangStrategy) StateForSymbol(symbol string) backtest.YinYangState {
+func (s *YinYangStrategy) StateForSymbol(symbol string) YinYangState {
 	return s.getOrCreateStateManager(symbol).State()
 }
 
-func (s *YinYangStrategy) TempState() (backtest.YinYangState, bool) {
+func (s *YinYangStrategy) TempState() (YinYangState, bool) {
 	if s.currentSymbol == "" {
-		return backtest.YinYangState{}, false
+		return YinYangState{}, false
 	}
 	return s.stateManagers[s.currentSymbol].GetTempState()
 }
@@ -200,7 +200,7 @@ func (s *YinYangStrategy) executeOpenSignal(kline backtest.KLineWithContract, di
 
 func (s *YinYangStrategy) updateNoPositionSignalPrices() {
 	sm := s.getOrCreateStateManager(s.currentSymbol)
-	var state backtest.YinYangState
+	var state YinYangState
 	var currentIsYang bool
 	if tempState, ok := sm.GetTempState(); ok {
 		state = tempState
@@ -240,7 +240,7 @@ func (s *YinYangStrategy) UpdateReverseSignalPrice() {
 	}
 
 	sm := s.getOrCreateStateManager(s.currentSymbol)
-	var state backtest.YinYangState
+	var state YinYangState
 	var currentIsYang bool
 	if tempState, ok := sm.GetTempState(); ok {
 		state = tempState
@@ -405,7 +405,7 @@ func (s *YinYangStrategy) ReverseSignalPriceForSymbol(symbol string, position *b
 
 var maxLeverage = decimal.NewFromInt(6)
 
-func (s *YinYangStrategy) calcLongLeverage(state backtest.YinYangState, openPrice decimal.Decimal) decimal.Decimal {
+func (s *YinYangStrategy) calcLongLeverage(state YinYangState, openPrice decimal.Decimal) decimal.Decimal {
 	minLow := decimal.Min(state.Yin1.Low, state.Yang1.Low)
 	denominator := openPrice.Sub(minLow)
 	if !denominator.IsPositive() {
@@ -418,7 +418,7 @@ func (s *YinYangStrategy) calcLongLeverage(state backtest.YinYangState, openPric
 	return lev
 }
 
-func (s *YinYangStrategy) calcShortLeverage(state backtest.YinYangState, openPrice decimal.Decimal) decimal.Decimal {
+func (s *YinYangStrategy) calcShortLeverage(state YinYangState, openPrice decimal.Decimal) decimal.Decimal {
 	maxHigh := decimal.Max(state.Yin1.High, state.Yang1.High)
 	denominator := maxHigh.Sub(openPrice)
 	if !denominator.IsPositive() {

@@ -12,14 +12,14 @@ type SignalStrategy interface {
 	UpdateStateOnly(kline backtest.KLineWithContract)
 }
 
-type RolloverHandler interface {
-	CheckAndExecute(currentSymbol, previousSymbol string, newKline backtest.KLineWithContract, oldKline backtest.KLineWithContract, date string, newSymbolKlines []KLineWithContract) []backtest.TradeSignal
-}
-
 type StrategyFactory interface {
 	Create(params map[string]interface{}) SignalStrategy
 	Name() string
 	Description() string
+	DisplayName() string
+	GetParams() []StrategyParamConfig
+	CreateRolloverHandler(strategy SignalStrategy) backtest.RolloverHandler
+	CreateStateRecorder() backtest.StateRecorder
 }
 
 type KLineWithContract = backtest.KLineWithContract

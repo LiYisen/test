@@ -13,9 +13,10 @@
         }
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-            background: #f5f7fa;
-            color: #333;
+            background: #1a1a2e;
+            color: #e0e0e0;
             line-height: 1.6;
+            min-height: 100vh;
         }
         .container {
             max-width: 1400px;
@@ -23,152 +24,169 @@
             padding: 20px;
         }
         header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 30px 0;
-            text-align: center;
-            margin-bottom: 30px;
-            border-radius: 0 0 20px 20px;
+            background: #16213e;
+            border-bottom: 1px solid #2a2a4a;
+            padding: 20px 0;
+            margin-bottom: 20px;
+        }
+        header .header-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
         header h1 {
-            font-size: 2.5em;
-            margin-bottom: 10px;
+            font-size: 1.5em;
+            font-weight: 500;
+            color: #fff;
         }
         header p {
-            opacity: 0.9;
-            font-size: 1.1em;
-        }
-        .nav-links {
-            margin-top: 15px;
+            color: #8892b0;
+            font-size: 0.9em;
         }
         .nav-links a {
-            color: white;
+            color: #8892b0;
             text-decoration: none;
-            padding: 8px 20px;
-            border: 2px solid white;
-            border-radius: 20px;
-            margin: 0 10px;
-            transition: all 0.3s;
+            padding: 8px 16px;
+            border: 1px solid #3a3a5a;
+            border-radius: 4px;
+            font-size: 0.9em;
+            transition: all 0.2s;
         }
         .nav-links a:hover {
-            background: white;
-            color: #667eea;
+            background: #1f2940;
+            color: #fff;
+            border-color: #4a4a6a;
         }
         .card {
-            background: white;
-            border-radius: 12px;
-            padding: 25px;
+            background: #16213e;
+            border: 1px solid #2a2a4a;
+            border-radius: 8px;
+            padding: 24px;
             margin-bottom: 20px;
-            box-shadow: 0 2px 12px rgba(0,0,0,0.08);
         }
         .card h2 {
-            color: #667eea;
+            color: #fff;
             margin-bottom: 20px;
-            font-size: 1.3em;
-            border-bottom: 2px solid #f0f0f0;
-            padding-bottom: 10px;
+            font-size: 1.1em;
+            font-weight: 500;
+            border-bottom: 1px solid #2a2a4a;
+            padding-bottom: 12px;
         }
         .form-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 20px;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 16px;
         }
         .form-group {
             display: flex;
             flex-direction: column;
         }
         .form-group label {
-            font-weight: 600;
-            margin-bottom: 8px;
-            color: #555;
+            font-weight: 400;
+            margin-bottom: 6px;
+            color: #8892b0;
+            font-size: 0.9em;
         }
         .form-group input, .form-group select {
-            padding: 12px 15px;
-            border: 2px solid #e0e0e0;
-            border-radius: 8px;
-            font-size: 1em;
-            transition: border-color 0.3s;
+            padding: 10px 12px;
+            border: 1px solid #3a3a5a;
+            border-radius: 4px;
+            font-size: 0.95em;
+            background: #1a1a2e;
+            color: #e0e0e0;
+            transition: border-color 0.2s;
         }
         .form-group input:focus, .form-group select:focus {
             outline: none;
-            border-color: #667eea;
+            border-color: #5a5a8a;
         }
-        .form-group input[type="date"] {
-            cursor: pointer;
+        .form-group input::placeholder {
+            color: #6a6a8a;
+        }
+        .form-group small {
+            color: #6a6a8a;
+            font-size: 0.8em;
+            margin-top: 4px;
         }
         .btn {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            border: none;
-            padding: 14px 40px;
-            font-size: 1.1em;
-            border-radius: 8px;
+            background: #1f2940;
+            color: #e0e0e0;
+            border: 1px solid #3a3a5a;
+            padding: 12px 32px;
+            font-size: 0.95em;
+            border-radius: 4px;
             cursor: pointer;
-            transition: transform 0.2s, box-shadow 0.2s;
-            font-weight: 600;
+            transition: all 0.2s;
+            font-weight: 400;
         }
         .btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+            background: #2a3a5a;
+            border-color: #4a4a7a;
         }
         .btn:disabled {
-            opacity: 0.6;
+            opacity: 0.5;
             cursor: not-allowed;
-            transform: none;
         }
         .btn-secondary {
-            background: #6c757d;
-            padding: 10px 25px;
-            font-size: 0.95em;
+            padding: 8px 16px;
+            font-size: 0.85em;
         }
         .btn-danger {
-            background: linear-gradient(135deg, #eb3349 0%, #f45c43 100%);
+            border-color: #5a2a2a;
+            color: #f05050;
+        }
+        .btn-danger:hover {
+            background: #3a1a1a;
         }
         .stats-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 15px;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 12px;
             margin-bottom: 20px;
         }
         .stat-card {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 20px;
-            border-radius: 10px;
+            background: #1a1a2e;
+            border: 1px solid #2a2a4a;
+            padding: 16px;
+            border-radius: 6px;
             text-align: center;
         }
         .stat-card .value {
-            font-size: 2em;
-            font-weight: bold;
-            margin-bottom: 5px;
+            font-size: 1.6em;
+            font-weight: 500;
+            margin-bottom: 4px;
+            color: #fff;
         }
         .stat-card .label {
-            opacity: 0.9;
-            font-size: 0.9em;
+            color: #8892b0;
+            font-size: 0.85em;
         }
-        .stat-card.positive {
-            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+        .stat-card.positive .value {
+            color: #64ffda;
         }
-        .stat-card.negative {
-            background: linear-gradient(135deg, #eb3349 0%, #f45c43 100%);
+        .stat-card.negative .value {
+            color: #ff6b6b;
         }
         .chart-container {
             position: relative;
-            height: 400px;
-            margin: 20px 0;
+            height: 350px;
+            margin: 16px 0;
         }
         .loading {
             text-align: center;
             padding: 40px;
-            color: #667eea;
+            color: #8892b0;
         }
         .loading::after {
             content: '';
             display: inline-block;
-            width: 30px;
-            height: 30px;
-            border: 3px solid #667eea;
-            border-top-color: transparent;
+            width: 24px;
+            height: 24px;
+            border: 2px solid #3a3a5a;
+            border-top-color: #8892b0;
             border-radius: 50%;
             animation: spin 1s linear infinite;
             margin-left: 10px;
@@ -178,72 +196,78 @@
             to { transform: rotate(360deg); }
         }
         .error {
-            background: #fee;
-            color: #c33;
-            padding: 15px;
-            border-radius: 8px;
+            background: #2a1a1a;
+            border: 1px solid #4a2a2a;
+            color: #ff6b6b;
+            padding: 12px 16px;
+            border-radius: 4px;
             margin: 10px 0;
+            font-size: 0.9em;
         }
         .success {
-            background: #efe;
-            color: #3c3;
-            padding: 15px;
-            border-radius: 8px;
+            background: #1a2a1a;
+            border: 1px solid #2a4a2a;
+            color: #64ffda;
+            padding: 12px 16px;
+            border-radius: 4px;
             margin: 10px 0;
+            font-size: 0.9em;
         }
         table {
             width: 100%;
             border-collapse: collapse;
-            margin-top: 15px;
+            margin-top: 12px;
         }
         th, td {
-            padding: 12px;
+            padding: 10px 12px;
             text-align: left;
-            border-bottom: 1px solid #e0e0e0;
+            border-bottom: 1px solid #2a2a4a;
+            font-size: 0.9em;
         }
         th {
-            background: #f8f9fa;
-            font-weight: 600;
-            color: #555;
+            background: #1a1a2e;
+            font-weight: 500;
+            color: #8892b0;
         }
         tr:hover {
-            background: #f8f9fa;
+            background: #1f2940;
         }
         .badge {
             display: inline-block;
-            padding: 4px 10px;
-            border-radius: 12px;
-            font-size: 0.85em;
-            font-weight: 600;
+            padding: 3px 8px;
+            border-radius: 3px;
+            font-size: 0.8em;
+            font-weight: 500;
         }
         .badge-buy {
-            background: #d4edda;
-            color: #155724;
+            background: #1a3a2a;
+            color: #64ffda;
         }
         .badge-sell {
-            background: #f8d7da;
-            color: #721c24;
+            background: #3a1a1a;
+            color: #ff6b6b;
         }
         .tabs {
             display: flex;
-            gap: 5px;
-            margin-bottom: 20px;
-            border-bottom: 2px solid #e0e0e0;
+            gap: 0;
+            margin-bottom: 16px;
+            border-bottom: 1px solid #2a2a4a;
         }
         .tab {
-            padding: 12px 25px;
+            padding: 10px 20px;
             cursor: pointer;
-            border-bottom: 3px solid transparent;
-            transition: all 0.3s;
-            font-weight: 600;
-            color: #666;
+            border-bottom: 2px solid transparent;
+            transition: all 0.2s;
+            font-weight: 400;
+            color: #8892b0;
+            font-size: 0.9em;
         }
         .tab.active {
-            color: #667eea;
-            border-bottom-color: #667eea;
+            color: #fff;
+            border-bottom-color: #64ffda;
         }
         .tab:hover {
-            color: #667eea;
+            color: #b0b0d0;
         }
         .tab-content {
             display: none;
@@ -255,126 +279,138 @@
             display: none !important;
         }
         #resultsList {
-            max-height: 400px;
+            max-height: 350px;
             overflow-y: auto;
         }
         .result-item {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 12px 15px;
-            background: #f8f9fa;
-            border-radius: 8px;
+            padding: 12px;
+            background: #1a1a2e;
+            border: 1px solid #2a2a4a;
+            border-radius: 4px;
             margin-bottom: 8px;
         }
         .result-item:hover {
-            background: #f0f0f0;
+            border-color: #3a3a5a;
         }
         .result-info {
             flex: 1;
         }
         .result-title {
-            font-weight: 600;
-            color: #333;
+            font-weight: 400;
+            color: #e0e0e0;
+            font-size: 0.95em;
         }
         .result-meta {
-            font-size: 0.85em;
-            color: #666;
+            font-size: 0.8em;
+            color: #6a6a8a;
             margin-top: 2px;
         }
         .result-actions {
             display: flex;
-            gap: 8px;
+            gap: 6px;
         }
         .result-actions button {
-            padding: 6px 12px;
-            font-size: 0.85em;
+            padding: 5px 10px;
+            font-size: 0.8em;
         }
         .search-select-wrapper {
             position: relative;
         }
         .search-select-input {
-            padding: 12px 15px;
-            border: 2px solid #e0e0e0;
-            border-radius: 8px;
-            font-size: 1em;
+            padding: 10px 12px;
+            border: 1px solid #3a3a5a;
+            border-radius: 4px;
+            font-size: 0.95em;
             width: 100%;
             cursor: pointer;
-            transition: border-color 0.3s;
+            background: #1a1a2e;
+            color: #e0e0e0;
+            transition: border-color 0.2s;
         }
         .search-select-input:focus {
             outline: none;
-            border-color: #667eea;
+            border-color: #5a5a8a;
         }
         .search-select-dropdown {
             position: absolute;
             top: 100%;
             left: 0;
             right: 0;
-            background: white;
-            border: 2px solid #e0e0e0;
-            border-top: none;
-            border-radius: 0 0 8px 8px;
-            max-height: 300px;
+            background: #16213e;
+            border: 1px solid #3a3a5a;
+            max-height: 280px;
             overflow-y: auto;
             z-index: 1000;
             display: none;
+            border-radius: 0 0 4px 4px;
         }
         .search-select-dropdown.show {
             display: block;
         }
         .search-select-option {
-            padding: 10px 15px;
+            padding: 10px 12px;
             cursor: pointer;
-            transition: background 0.2s;
+            transition: background 0.15s;
+            font-size: 0.9em;
         }
         .search-select-option:hover {
-            background: #f0f0f0;
+            background: #1f2940;
         }
         .search-select-option.selected {
-            background: #667eea;
-            color: white;
+            background: #1f2940;
         }
         .search-select-option .code {
-            font-weight: 600;
-            color: #667eea;
-        }
-        .search-select-option.selected .code {
-            color: white;
+            font-weight: 500;
+            color: #e0e0e0;
         }
         .search-select-option .name {
-            color: #666;
+            color: #8892b0;
             margin-left: 8px;
         }
-        .search-select-option.selected .name {
-            color: rgba(255,255,255,0.9);
-        }
         .search-select-option .exchange {
-            color: #999;
+            color: #6a6a8a;
             font-size: 0.85em;
             margin-left: 8px;
         }
-        .search-select-option.selected .exchange {
-            color: rgba(255,255,255,0.8);
-        }
         .search-select-empty {
-            padding: 15px;
+            padding: 12px;
             text-align: center;
-            color: #999;
+            color: #6a6a8a;
+            font-size: 0.9em;
+        }
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #1a1a2e;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #3a3a5a;
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #4a4a6a;
         }
     </style>
 </head>
 <body>
     <header>
-        <h1>期货回测系统</h1>
-        <p>阴阳线突破策略回测平台</p>
-        <div class="nav-links">
-            <a href="/portfolio">组合分析</a>
+        <div class="header-content">
+            <div>
+                <h1>期货回测系统</h1>
+                <p>策略回测平台</p>
+            </div>
+            <div class="nav-links">
+                <a href="/portfolio">组合分析</a>
+            </div>
         </div>
     </header>
 
     <div class="container">
-        <!-- 回测参数表单 -->
         <div class="card">
             <h2>新建回测任务</h2>
             <form id="backtestForm">
@@ -383,7 +419,7 @@
                         <label for="symbolSearch">品种</label>
                         <div class="search-select-wrapper">
                             <input type="text" id="symbolSearch" class="search-select-input" 
-                                   placeholder="输入品种代码/名称/拼音搜索..." autocomplete="off">
+                                   placeholder="输入品种代码/名称搜索..." autocomplete="off">
                             <input type="hidden" id="symbol" name="symbol">
                             <div class="search-select-dropdown" id="symbolDropdown"></div>
                         </div>
@@ -401,41 +437,29 @@
                         <select id="strategy" name="strategy">
                         </select>
                     </div>
-                    <div class="form-group">
-                        <label for="leverage">杠杆系数</label>
-                        <input type="number" id="leverage" name="leverage" value="3" min="0.1" max="10" step="0.1">
-                    </div>
+                    <div id="strategyParams"></div>
                 </div>
-                <div style="margin-top: 25px; text-align: center;">
+                <div style="margin-top: 20px; text-align: center;">
                     <button type="submit" class="btn" id="runBtn">运行回测</button>
                 </div>
             </form>
             <div id="message"></div>
         </div>
 
-        <!-- 统计指标 -->
         <div class="card hidden" id="statsCard">
             <h2>回测结果统计</h2>
             <div class="stats-grid" id="statsGrid"></div>
         </div>
 
-        <!-- 图表区域 -->
         <div class="card hidden" id="chartsCard">
             <h2>图表分析</h2>
             <div class="tabs">
-                <div class="tab active" data-tab="equity">资金曲线</div>
-                <div class="tab" data-tab="drawdown">回撤曲线</div>
+                <div class="tab active" data-tab="equity">资金曲线与回撤</div>
                 <div class="tab" data-tab="daily">日收益</div>
-                <div class="tab" data-tab="signals">交易信号</div>
             </div>
             <div class="tab-content active" id="tab-equity">
                 <div class="chart-container">
                     <canvas id="equityChart"></canvas>
-                </div>
-            </div>
-            <div class="tab-content" id="tab-drawdown">
-                <div class="chart-container">
-                    <canvas id="drawdownChart"></canvas>
                 </div>
             </div>
             <div class="tab-content" id="tab-daily">
@@ -443,14 +467,8 @@
                     <canvas id="dailyChart"></canvas>
                 </div>
             </div>
-            <div class="tab-content" id="tab-signals">
-                <div class="chart-container">
-                    <canvas id="signalsChart"></canvas>
-                </div>
-            </div>
         </div>
 
-        <!-- 交易记录 -->
         <div class="card hidden" id="tradesCard">
             <h2>交易记录</h2>
             <div style="overflow-x: auto;">
@@ -472,11 +490,10 @@
             </div>
         </div>
 
-        <!-- 历史结果 -->
         <div class="card">
             <h2>历史回测结果</h2>
             <button class="btn btn-secondary" onclick="loadResults()">刷新列表</button>
-            <div id="resultsList" style="margin-top: 15px;"></div>
+            <div id="resultsList" style="margin-top: 12px;"></div>
         </div>
     </div>
 
@@ -485,8 +502,84 @@
         let charts = {};
         let allSymbols = [];
         let selectedSymbol = null;
+        
+        function escapeHtml(text) {
+            if (text === null || text === undefined) return '';
+            const div = document.createElement('div');
+            div.textContent = String(text);
+            return div.innerHTML;
+        }
+        
+        function validateDates(startDate, endDate) {
+            if (!startDate || !endDate) {
+                return { valid: false, error: '请选择开始和结束日期' };
+            }
+            
+            const start = new Date(startDate);
+            const end = new Date(endDate);
+            
+            if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+                return { valid: false, error: '日期格式无效' };
+            }
+            
+            if (start >= end) {
+                return { valid: false, error: '开始日期必须早于结束日期' };
+            }
+            
+            const today = new Date();
+            today.setHours(23, 59, 59, 999);
+            if (end > today) {
+                return { valid: false, error: '结束日期不能晚于今天' };
+            }
+            
+            const maxRange = 10 * 365 * 24 * 60 * 60 * 1000;
+            if (end - start > maxRange) {
+                return { valid: false, error: '日期范围不能超过10年' };
+            }
+            
+            return { valid: true };
+        }
+        
+        function validateParams(strategy, params) {
+            const strategyConfig = window.strategiesConfig && window.strategiesConfig.find(s => s.name === strategy);
+            if (!strategyConfig || !strategyConfig.params) {
+                return { valid: true, params: params };
+            }
+            
+            const errors = [];
+            const validatedParams = {};
+            
+            strategyConfig.params.forEach(p => {
+                const input = document.getElementById('param_' + p.name);
+                if (!input) return;
+                
+                const value = parseFloat(input.value);
+                
+                if (isNaN(value)) {
+                    errors.push(`${p.display_name}必须是数字`);
+                    return;
+                }
+                
+                if (p.min !== undefined && value < p.min) {
+                    errors.push(`${p.display_name}不能小于${p.min}`);
+                    return;
+                }
+                
+                if (p.max !== undefined && value > p.max) {
+                    errors.push(`${p.display_name}不能大于${p.max}`);
+                    return;
+                }
+                
+                validatedParams[p.name] = value;
+            });
+            
+            return {
+                valid: errors.length === 0,
+                errors: errors,
+                params: validatedParams
+            };
+        }
 
-        // Tab切换
         document.querySelectorAll('.tab').forEach(tab => {
             tab.addEventListener('click', () => {
                 document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
@@ -496,7 +589,6 @@
             });
         });
 
-        // 加载品种列表
         async function loadSymbols() {
             try {
                 const response = await fetch('/api/symbols');
@@ -517,12 +609,56 @@
                 select.innerHTML = strategies.map(s => 
                     `<option value="${s.name}">${s.display_name}</option>`
                 ).join('');
+                
+                window.strategiesConfig = strategies;
+                
+                select.addEventListener('change', updateStrategyParams);
+                
+                updateStrategyParams();
             } catch (err) {
                 console.error('加载策略列表失败:', err);
             }
         }
 
-        // 渲染品种下拉列表
+        function updateStrategyParams() {
+            const strategyName = document.getElementById('strategy').value;
+            const paramsContainer = document.getElementById('strategyParams');
+            
+            if (!window.strategiesConfig) {
+                return;
+            }
+            
+            const strategy = window.strategiesConfig.find(s => s.name === strategyName);
+            if (!strategy || !strategy.params || strategy.params.length === 0) {
+                paramsContainer.innerHTML = '';
+                return;
+            }
+            
+            const paramsHtml = strategy.params.map(param => {
+                if (param.type === 'int') {
+                    return `
+                        <div class="form-group">
+                            <label for="param_${param.name}">${param.display_name}</label>
+                            <input type="number" id="param_${param.name}" name="${param.name}" 
+                                   value="${param.default}" min="${param.min}" max="${param.max}" step="1">
+                            <small>${param.description}</small>
+                        </div>
+                    `;
+                } else {
+                    return `
+                        <div class="form-group">
+                            <label for="param_${param.name}">${param.display_name}</label>
+                            <input type="number" id="param_${param.name}" name="${param.name}" 
+                                   value="${param.default}" min="${param.min}" max="${param.max}" step="0.1">
+                            <small>${param.description}</small>
+                        </div>
+                    `;
+                }
+            }).join('');
+            
+            paramsContainer.innerHTML = paramsHtml;
+        }
+
         function renderSymbolDropdown(symbols) {
             const dropdown = document.getElementById('symbolDropdown');
             
@@ -545,7 +681,6 @@
             });
         }
 
-        // 选择品种
         function selectSymbol(opt) {
             selectedSymbol = {
                 code: opt.dataset.code,
@@ -561,7 +696,6 @@
             renderSymbolDropdown(allSymbols);
         }
 
-        // 搜索品种
         function searchSymbols(query) {
             if (!query) return allSymbols;
             
@@ -573,20 +707,18 @@
             );
         }
 
-        // 品种搜索输入事件
         const symbolSearch = document.getElementById('symbolSearch');
         const symbolDropdown = document.getElementById('symbolDropdown');
 
         symbolSearch.addEventListener('focus', () => {
-            const query = symbolSearch.value.split(' - ')[0];
-            renderSymbolDropdown(searchSymbols(query));
             symbolDropdown.classList.add('show');
+            renderSymbolDropdown(allSymbols);
         });
 
         symbolSearch.addEventListener('input', (e) => {
-            const query = e.target.value;
-            renderSymbolDropdown(searchSymbols(query));
+            const filtered = searchSymbols(e.target.value);
             symbolDropdown.classList.add('show');
+            renderSymbolDropdown(filtered);
         });
 
         document.addEventListener('click', (e) => {
@@ -595,249 +727,242 @@
             }
         });
 
-        // 设置默认日期
-        function setDefaultDates() {
-            const today = new Date();
-            const endDate = today.toISOString().split('T')[0];
-            const startDate = new Date(today.getFullYear(), 0, 1).toISOString().split('T')[0];
-            
-            document.getElementById('startDate').value = startDate;
-            document.getElementById('endDate').value = endDate;
+        async function loadResults() {
+            try {
+                const response = await fetch('/api/results');
+                const data = await response.json();
+                const results = data.results || [];
+                renderResults(results);
+            } catch (err) {
+                console.error('加载结果列表失败:', err);
+            }
         }
 
-        // 表单提交
-        document.getElementById('backtestForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const btn = document.getElementById('runBtn');
-            const msg = document.getElementById('message');
+        function renderResults(results) {
+            const container = document.getElementById('resultsList');
             
-            const symbol = document.getElementById('symbol').value;
-            if (!symbol) {
-                msg.innerHTML = '<div class="error">请选择品种</div>';
+            if (!results || results.length === 0) {
+                container.innerHTML = '<div style="text-align: center; color: #6a6a8a; padding: 20px;">暂无回测结果</div>';
                 return;
             }
             
-            btn.disabled = true;
-            msg.innerHTML = '<div class="loading">正在运行回测...</div>';
-
-            // 转换日期格式 YYYY-MM-DD -> YYYYMMDD
-            const startDateVal = document.getElementById('startDate').value.replace(/-/g, '');
-            const endDateVal = document.getElementById('endDate').value.replace(/-/g, '');
-
-            const data = {
-                symbol: symbol,
-                start_date: startDateVal,
-                end_date: endDateVal,
-                leverage: parseFloat(document.getElementById('leverage').value),
-                strategy: document.getElementById('strategy').value
-            };
-
-            try {
-                const response = await fetch('/api/backtest', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(data)
-                });
-
-                const result = await response.json();
+            container.innerHTML = results.map(r => {
+                const parts = r.id.split('_');
+                const symbol = parts[0] || '';
+                const strategy = parts[1] || '';
+                const startDate = parts[2] || '';
+                const endDate = parts[3] || '';
+                const leverage = parts[4] || '';
                 
-                if (!result.success) {
-                    throw new Error(result.message || '回测失败');
-                }
-
-                currentResultId = result.id;
-                msg.innerHTML = '<div class="success">回测完成！结果ID: ' + result.id + '</div>';
-                
-                displayStats(result.statistics);
-                await loadResultData(result.id);
-                loadResults();
-            } catch (err) {
-                msg.innerHTML = '<div class="error">错误: ' + err.message + '</div>';
-            } finally {
-                btn.disabled = false;
-            }
-        });
-
-        // 显示统计指标
-        function displayStats(stats) {
-            const grid = document.getElementById('statsGrid');
-            const totalReturn = parseFloat(stats.total_return);
-            const annualReturn = parseFloat(stats.annual_return);
-            
-            grid.innerHTML = `
-                <div class="stat-card ${totalReturn >= 0 ? 'positive' : 'negative'}">
-                    <div class="value">${(totalReturn * 100).toFixed(2)}%</div>
-                    <div class="label">总收益率</div>
-                </div>
-                <div class="stat-card ${annualReturn >= 0 ? 'positive' : 'negative'}">
-                    <div class="value">${(annualReturn * 100).toFixed(2)}%</div>
-                    <div class="label">年化收益率</div>
-                </div>
-                <div class="stat-card">
-                    <div class="value">${(parseFloat(stats.max_drawdown_ratio) * 100).toFixed(2)}%</div>
-                    <div class="label">最大回撤</div>
-                </div>
-                <div class="stat-card">
-                    <div class="value">${parseFloat(stats.sharpe_ratio).toFixed(2)}</div>
-                    <div class="label">夏普比率</div>
-                </div>
-                <div class="stat-card">
-                    <div class="value">${parseFloat(stats.calmar_ratio).toFixed(2)}</div>
-                    <div class="label">卡尔马比率</div>
-                </div>
-                <div class="stat-card">
-                    <div class="value">${stats.total_trades}</div>
-                    <div class="label">交易次数</div>
-                </div>
-                <div class="stat-card">
-                    <div class="value">${(parseFloat(stats.win_rate) * 100).toFixed(2)}%</div>
-                    <div class="label">胜率</div>
-                </div>
-                <div class="stat-card">
-                    <div class="value">${parseFloat(stats.profit_loss_ratio).toFixed(2)}</div>
-                    <div class="label">盈亏比</div>
-                </div>
-            `;
-            
-            document.getElementById('statsCard').classList.remove('hidden');
+                return `
+                    <div class="result-item">
+                        <div class="result-info">
+                            <div class="result-title">${escapeHtml(symbol)} - ${escapeHtml(strategy)}</div>
+                            <div class="result-meta">${escapeHtml(startDate)} ~ ${escapeHtml(endDate)} | 杠杆: ${escapeHtml(leverage)}</div>
+                        </div>
+                        <div class="result-actions">
+                            <button class="btn btn-secondary" onclick="viewResult('${escapeHtml(r.id)}')">查看</button>
+                            <button class="btn btn-danger" onclick="deleteResult('${escapeHtml(r.id)}')">删除</button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
         }
 
-        // 加载结果数据
-        async function loadResultData(id) {
+        async function viewResult(id) {
+            currentResultId = id;
+            
             try {
-                const response = await fetch('/api/results/' + id + '/data');
-                const data = await response.json();
+                const [summaryRes, dailyRes, tradesRes] = await Promise.all([
+                    fetch(`/api/results/${id}`),
+                    fetch(`/api/results/${id}/data?type=daily`),
+                    fetch(`/api/results/${id}/data?type=returns`)
+                ]);
                 
-                drawEquityChart(data.daily_records);
-                drawDrawdownChart(data.daily_records);
-                drawDailyReturnChart(data.daily_records);
-                drawSignalsChart(data.daily_records, data.signals);
-                displayTrades(data.position_returns);
+                const summary = await summaryRes.json();
+                const dailyData = await dailyRes.json();
+                const tradesData = await tradesRes.json();
                 
+                const daily = dailyData.daily_records || [];
+                const trades = tradesData.position_returns || [];
+                
+                renderStats(summary);
+                renderCharts(daily);
+                renderTrades(trades);
+                
+                document.getElementById('statsCard').classList.remove('hidden');
                 document.getElementById('chartsCard').classList.remove('hidden');
                 document.getElementById('tradesCard').classList.remove('hidden');
+                
+                document.getElementById('statsCard').scrollIntoView({ behavior: 'smooth' });
             } catch (err) {
-                console.error('加载结果数据失败:', err);
+                console.error('加载结果失败:', err);
+                showMessage('加载结果失败: ' + err.message, 'error');
             }
         }
 
-        // 绘制资金曲线
-        function drawEquityChart(records) {
-            const ctx = document.getElementById('equityChart').getContext('2d');
+        async function deleteResult(id) {
+            if (!confirm('确定要删除这个结果吗？')) return;
+            
+            try {
+                await fetch(`/api/results/${id}`, { method: 'DELETE' });
+                loadResults();
+                showMessage('删除成功', 'success');
+            } catch (err) {
+                showMessage('删除失败: ' + err.message, 'error');
+            }
+        }
+
+        function renderStats(summary) {
+            const grid = document.getElementById('statsGrid');
+            
+            const stats = summary.statistics || summary;
+            
+            const totalReturn = parseFloat(stats.total_return) || 0;
+            const annualReturn = parseFloat(stats.annual_return) || 0;
+            const maxDrawdown = parseFloat(stats.max_drawdown) || 0;
+            const sharpeRatio = parseFloat(stats.sharpe_ratio) || 0;
+            const winRate = parseFloat(stats.win_rate) || 0;
+            
+            const displayStats = [
+                { label: '总收益率', value: formatPercent(totalReturn), positive: totalReturn > 0 },
+                { label: '年化收益', value: formatPercent(annualReturn), positive: annualReturn > 0 },
+                { label: '最大回撤', value: formatPercent(maxDrawdown), positive: false },
+                { label: '夏普比率', value: sharpeRatio.toFixed(2), positive: sharpeRatio > 0 },
+                { label: '胜率', value: formatPercent(winRate), positive: winRate > 0.5 },
+                { label: '交易次数', value: stats.total_trades || '-' }
+            ];
+            
+            grid.innerHTML = displayStats.map(s => `
+                <div class="stat-card ${s.positive ? 'positive' : ''}">
+                    <div class="value">${escapeHtml(s.value)}</div>
+                    <div class="label">${escapeHtml(s.label)}</div>
+                </div>
+            `).join('');
+        }
+
+        function renderCharts(daily) {
+            if (!daily || daily.length === 0) return;
+            
+            const dates = daily.map(d => d.date);
+            const equity = daily.map(d => d.total_value);
+            const drawdown = daily.map(d => (d.drawdown || 0) * 100);
+            const dailyReturn = daily.map(d => (d.daily_return || 0) * 100);
+            
             if (charts.equity) charts.equity.destroy();
+            if (charts.daily) charts.daily.destroy();
             
-            const labels = records.map(r => r.date);
-            const values = records.map(r => parseFloat(r.total_value));
-            
-            charts.equity = new Chart(ctx, {
+            charts.equity = new Chart(document.getElementById('equityChart'), {
                 type: 'line',
                 data: {
-                    labels: labels,
-                    datasets: [{
-                        label: '账户净值',
-                        data: values,
-                        borderColor: '#667eea',
-                        backgroundColor: 'rgba(102, 126, 234, 0.1)',
-                        fill: true,
-                        tension: 0.1,
-                        pointRadius: 0
-                    }]
+                    labels: dates,
+                    datasets: [
+                        {
+                            label: '资金曲线',
+                            data: equity,
+                            borderColor: '#64ffda',
+                            backgroundColor: 'rgba(100, 255, 218, 0.1)',
+                            borderWidth: 1.5,
+                            fill: true,
+                            tension: 0.1,
+                            pointRadius: 0,
+                            yAxisID: 'y'
+                        },
+                        {
+                            label: '回撤',
+                            data: drawdown,
+                            borderColor: '#ff6b6b',
+                            backgroundColor: 'rgba(255, 107, 107, 0.1)',
+                            borderWidth: 1.5,
+                            fill: true,
+                            tension: 0.1,
+                            pointRadius: 0,
+                            yAxisID: 'y1'
+                        }
+                    ]
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
                     interaction: {
+                        mode: 'index',
                         intersect: false,
-                        mode: 'index'
                     },
                     plugins: {
-                        title: {
+                        legend: {
                             display: true,
-                            text: '资金曲线'
+                            position: 'top',
+                            labels: {
+                                color: '#8892b0',
+                                usePointStyle: true,
+                                padding: 15
+                            }
                         },
                         tooltip: {
                             callbacks: {
-                                label: (ctx) => '净值: ' + ctx.parsed.y.toFixed(4)
+                                label: function(context) {
+                                    let label = context.dataset.label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    if (context.dataset.label === '回撤') {
+                                        label += context.parsed.y.toFixed(2) + '%';
+                                    } else {
+                                        label += context.parsed.y.toFixed(2);
+                                    }
+                                    return label;
+                                }
                             }
                         }
                     },
                     scales: {
-                        y: {
-                            beginAtZero: false
-                        }
-                    }
-                }
-            });
-        }
-
-        // 绘制回撤曲线
-        function drawDrawdownChart(records) {
-            const ctx = document.getElementById('drawdownChart').getContext('2d');
-            if (charts.drawdown) charts.drawdown.destroy();
-            
-            let peak = 1;
-            const drawdowns = records.map(r => {
-                const val = parseFloat(r.total_value);
-                if (val > peak) peak = val;
-                return (peak - val) / peak;
-            });
-            
-            charts.drawdown = new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: records.map(r => r.date),
-                    datasets: [{
-                        label: '回撤比例',
-                        data: drawdowns,
-                        borderColor: '#eb3349',
-                        backgroundColor: 'rgba(235, 51, 73, 0.1)',
-                        fill: true,
-                        tension: 0.1,
-                        pointRadius: 0
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        title: {
-                            display: true,
-                            text: '回撤曲线'
+                        x: {
+                            grid: { color: '#2a2a4a' },
+                            ticks: { color: '#8892b0', maxTicksLimit: 10 }
                         },
-                        tooltip: {
-                            callbacks: {
-                                label: (ctx) => '回撤: ' + (ctx.parsed.y * 100).toFixed(2) + '%'
-                            }
-                        }
-                    },
-                    scales: {
                         y: {
-                            beginAtZero: true,
-                            ticks: {
-                                callback: (v) => (v * 100).toFixed(1) + '%'
+                            type: 'linear',
+                            display: true,
+                            position: 'left',
+                            grid: { color: '#2a2a4a' },
+                            ticks: { color: '#64ffda' },
+                            title: {
+                                display: true,
+                                text: '资金',
+                                color: '#64ffda'
+                            }
+                        },
+                        y1: {
+                            type: 'linear',
+                            display: true,
+                            position: 'right',
+                            grid: {
+                                drawOnChartArea: false,
+                            },
+                            ticks: { 
+                                color: '#ff6b6b',
+                                callback: function(value) {
+                                    return value.toFixed(1) + '%';
+                                }
+                            },
+                            title: {
+                                display: true,
+                                text: '回撤',
+                                color: '#ff6b6b'
                             }
                         }
                     }
                 }
             });
-        }
-
-        // 绘制日收益
-        function drawDailyReturnChart(records) {
-            const ctx = document.getElementById('dailyChart').getContext('2d');
-            if (charts.daily) charts.daily.destroy();
             
-            const returns = records.map(r => parseFloat(r.daily_return));
-            const colors = returns.map(r => r >= 0 ? '#38ef7d' : '#f45c43');
-            
-            charts.daily = new Chart(ctx, {
+            charts.daily = new Chart(document.getElementById('dailyChart'), {
                 type: 'bar',
                 data: {
-                    labels: records.map(r => r.date),
+                    labels: dates,
                     datasets: [{
-                        label: '日收益率',
-                        data: returns,
-                        backgroundColor: colors,
+                        label: '日收益',
+                        data: dailyReturn,
+                        backgroundColor: dailyReturn.map(v => v >= 0 ? 'rgba(100, 255, 218, 0.6)' : 'rgba(255, 107, 107, 0.6)'),
                         borderWidth: 0
                     }]
                 },
@@ -845,188 +970,168 @@
                     responsive: true,
                     maintainAspectRatio: false,
                     plugins: {
-                        title: {
+                        legend: {
                             display: true,
-                            text: '每日收益率'
+                            position: 'top',
+                            labels: {
+                                color: '#8892b0',
+                                usePointStyle: true,
+                                padding: 15
+                            }
                         },
                         tooltip: {
                             callbacks: {
-                                label: (ctx) => '日收益: ' + (ctx.parsed.y * 100).toFixed(4) + '%'
+                                label: function(context) {
+                                    return '日收益: ' + context.parsed.y.toFixed(2) + '%';
+                                }
                             }
                         }
                     },
                     scales: {
+                        x: {
+                            grid: { color: '#2a2a4a' },
+                            ticks: { color: '#8892b0', maxTicksLimit: 10 }
+                        },
                         y: {
-                            ticks: {
-                                callback: (v) => (v * 100).toFixed(2) + '%'
+                            grid: { color: '#2a2a4a' },
+                            ticks: { 
+                                color: '#8892b0',
+                                callback: function(value) {
+                                    return value + '%';
+                                }
                             }
                         }
-                    }
+                    },
+                    barPercentage: 1,
+                    categoryPercentage: 1
                 }
             });
         }
 
-        // 绘制交易信号
-        function drawSignalsChart(records, signals) {
-            const ctx = document.getElementById('signalsChart').getContext('2d');
-            if (charts.signals) charts.signals.destroy();
-            
-            const labels = records.map(r => r.date);
-            const values = records.map(r => parseFloat(r.total_value));
-            
-            const buySignals = signals.filter(s => s.direction === 'Buy').map(s => ({
-                x: s.date,
-                y: values[labels.indexOf(s.date)] || 1
-            }));
-            
-            const sellSignals = signals.filter(s => s.direction === 'Sell').map(s => ({
-                x: s.date,
-                y: values[labels.indexOf(s.date)] || 1
-            }));
-            
-            charts.signals = new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: labels,
-                    datasets: [
-                        {
-                            label: '账户净值',
-                            data: values,
-                            borderColor: '#667eea',
-                            backgroundColor: 'rgba(102, 126, 234, 0.05)',
-                            fill: true,
-                            pointRadius: 0,
-                            tension: 0.1
-                        },
-                        {
-                            label: '买入信号',
-                            data: buySignals,
-                            backgroundColor: '#38ef7d',
-                            borderColor: '#38ef7d',
-                            pointStyle: 'triangle',
-                            pointRadius: 8,
-                            showLine: false
-                        },
-                        {
-                            label: '卖出信号',
-                            data: sellSignals,
-                            backgroundColor: '#f45c43',
-                            borderColor: '#f45c43',
-                            pointStyle: 'triangle',
-                            pointRadius: 8,
-                            showLine: false
-                        }
-                    ]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        title: {
-                            display: true,
-                            text: '交易信号分布'
-                        }
-                    }
-                }
-            });
-        }
-
-        // 显示交易记录
-        function displayTrades(returns) {
+        function renderTrades(trades) {
             const tbody = document.querySelector('#tradesTable tbody');
-            tbody.innerHTML = returns.map(r => `
-                <tr>
-                    <td>${r.open_date}</td>
-                    <td>${r.close_date}</td>
-                    <td>${r.symbol}</td>
-                    <td><span class="badge badge-${r.direction === 'Buy' ? 'buy' : 'sell'}">${r.direction === 'Buy' ? '多' : '空'}</span></td>
-                    <td>${parseFloat(r.open_price).toFixed(2)}</td>
-                    <td>${parseFloat(r.close_price).toFixed(2)}</td>
-                    <td>${parseFloat(r.leverage).toFixed(2)}x</td>
-                    <td style="color: ${parseFloat(r.return) >= 0 ? '#11998e' : '#eb3349'}">${(parseFloat(r.return) * 100).toFixed(4)}%</td>
-                </tr>
-            `).join('');
-        }
-
-        // 加载历史结果列表
-        async function loadResults() {
-            try {
-                const response = await fetch('/api/results');
-                const data = await response.json();
-                
-                const list = document.getElementById('resultsList');
-                
-                if (data.results.length === 0) {
-                    list.innerHTML = '<p style="color: #999; padding: 20px; text-align: center;">暂无历史回测结果</p>';
-                    return;
-                }
-                
-                list.innerHTML = data.results.map(r => {
-                    const parts = r.id.split('_');
-                    const symbol = parts[0] || '';
-                    const startDate = parts[1] || '';
-                    const endDate = parts[2] || '';
-                    const leverage = parts[3] || '';
-                    
-                    return `
-                        <div class="result-item">
-                            <div class="result-info">
-                                <div class="result-title">${symbol}</div>
-                                <div class="result-meta">${startDate} ~ ${endDate} | 杠杆: ${leverage}</div>
-                            </div>
-                            <div class="result-actions">
-                                <button class="btn btn-secondary" onclick="viewResult('${r.id}')">查看</button>
-                                <button class="btn btn-danger" onclick="deleteResult('${r.id}')">删除</button>
-                            </div>
-                        </div>
-                    `;
-                }).join('');
-            } catch (err) {
-                console.error('加载结果列表失败:', err);
-            }
-        }
-
-        // 删除结果
-        async function deleteResult(id) {
-            if (!confirm('确定要删除该回测结果吗？此操作不可恢复。')) {
+            
+            if (!trades || trades.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; color: #6a6a8a;">暂无交易记录</td></tr>';
                 return;
             }
             
+            tbody.innerHTML = trades.map(t => {
+                const returnValue = parseFloat(t.return) || 0;
+                const isLong = t.direction === 'Buy';
+                return `
+                    <tr>
+                        <td>${escapeHtml(t.open_date)}</td>
+                        <td>${escapeHtml(t.close_date)}</td>
+                        <td>${escapeHtml(t.symbol)}</td>
+                        <td><span class="badge ${isLong ? 'badge-buy' : 'badge-sell'}">${isLong ? '多' : '空'}</span></td>
+                        <td>${escapeHtml(formatPrice(t.open_price))}</td>
+                        <td>${escapeHtml(formatPrice(t.close_price))}</td>
+                        <td>${escapeHtml(t.leverage || '-')}</td>
+                        <td style="color: ${returnValue > 0 ? '#64ffda' : '#ff6b6b'}">${escapeHtml(formatPercent(returnValue))}</td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function formatPercent(value) {
+            if (value === null || value === undefined) return '-';
+            return (value * 100).toFixed(2) + '%';
+        }
+
+        function formatPrice(value) {
+            if (value === null || value === undefined) return '-';
+            return Number(value).toFixed(2);
+        }
+
+        function showMessage(msg, type) {
+            const div = document.getElementById('message');
+            div.innerHTML = `<div class="${type}">${msg}</div>`;
+            setTimeout(() => div.innerHTML = '', 5000);
+        }
+
+        document.getElementById('backtestForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const symbol = document.getElementById('symbol').value;
+            const startDate = document.getElementById('startDate').value;
+            const endDate = document.getElementById('endDate').value;
+            const strategy = document.getElementById('strategy').value;
+            
+            if (!symbol) {
+                showMessage('请选择品种', 'error');
+                return;
+            }
+            
+            const dateValidation = validateDates(startDate, endDate);
+            if (!dateValidation.valid) {
+                showMessage(dateValidation.error, 'error');
+                return;
+            }
+            
+            const params = {};
+            if (window.strategiesConfig) {
+                const strategyConfig = window.strategiesConfig.find(s => s.name === strategy);
+                if (strategyConfig && strategyConfig.params) {
+                    strategyConfig.params.forEach(p => {
+                        const input = document.getElementById('param_' + p.name);
+                        if (input) {
+                            params[p.name] = parseFloat(input.value);
+                        }
+                    });
+                }
+            }
+            
+            const paramsValidation = validateParams(strategy, params);
+            if (!paramsValidation.valid) {
+                showMessage(paramsValidation.errors.join('; '), 'error');
+                return;
+            }
+            
+            const btn = document.getElementById('runBtn');
+            btn.disabled = true;
+            btn.textContent = '运行中...';
+            document.getElementById('message').innerHTML = '<div class="loading">正在执行回测</div>';
+            
             try {
-                const response = await fetch('/api/results/' + id, { method: 'DELETE' });
+                const response = await fetch('/api/backtest', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        symbol,
+                        start_date: startDate.replace(/-/g, ''),
+                        end_date: endDate.replace(/-/g, ''),
+                        strategy,
+                        params: paramsValidation.params
+                    })
+                });
+                
                 const result = await response.json();
                 
-                if (result.success) {
+                if (response.ok) {
+                    showMessage('回测完成', 'success');
                     loadResults();
-                    alert('删除成功');
+                    viewResult(result.id);
                 } else {
-                    alert('删除失败: ' + (result.error || '未知错误'));
+                    showMessage(result.error || '回测失败', 'error');
                 }
             } catch (err) {
-                alert('删除失败: ' + err.message);
+                showMessage('请求失败: ' + err.message, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '运行回测';
             }
-        }
+        });
 
-        // 查看历史结果
-        async function viewResult(id) {
-            try {
-                const response = await fetch('/api/results/' + id);
-                const result = await response.json();
-                
-                currentResultId = id;
-                displayStats(result.statistics);
-                await loadResultData(id);
-                
-                window.scrollTo({ top: 0, behavior: 'smooth' });
-            } catch (err) {
-                alert('加载结果失败: ' + err.message);
-            }
-        }
+        const today = new Date();
+        const oneYearAgo = new Date(today);
+        oneYearAgo.setFullYear(today.getFullYear() - 1);
+        
+        document.getElementById('endDate').value = today.toISOString().split('T')[0];
+        document.getElementById('startDate').value = oneYearAgo.toISOString().split('T')[0];
 
-        // 页面初始化
         loadSymbols();
         loadStrategies();
-        setDefaultDates();
         loadResults();
     </script>
 </body>

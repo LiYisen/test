@@ -47,17 +47,17 @@ func (a *YinYangAdapter) SignalPrices() (long, short decimal.Decimal) {
 }
 
 // TempState 获取临时状态（阴阳线特有）
-func (a *YinYangAdapter) TempState() (backtest.YinYangState, bool) {
+func (a *YinYangAdapter) TempState() (YinYangState, bool) {
 	return a.strategy.TempState()
 }
 
 // State 获取当前状态（阴阳线特有）
-func (a *YinYangAdapter) State() backtest.YinYangState {
+func (a *YinYangAdapter) State() YinYangState {
 	return a.strategy.State()
 }
 
 // StateForSymbol 获取指定品种的状态（阴阳线特有）
-func (a *YinYangAdapter) StateForSymbol(symbol string) backtest.YinYangState {
+func (a *YinYangAdapter) StateForSymbol(symbol string) YinYangState {
 	return a.strategy.StateForSymbol(symbol)
 }
 

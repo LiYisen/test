@@ -9,15 +9,15 @@ import (
 )
 
 type StateManager struct {
-	state   backtest.YinYangState
+	state   YinYangState
 	lastDir bool
 	hasData bool
 
-	tempState    backtest.YinYangState
+	tempState    YinYangState
 	hasTempState bool
 	tempUsed     bool
 
-	prevState     backtest.YinYangState
+	prevState     YinYangState
 	prevDir       bool
 	currentIsYang bool
 }
@@ -26,7 +26,7 @@ func NewStateManager() *StateManager {
 	return &StateManager{}
 }
 
-func (m *StateManager) State() backtest.YinYangState {
+func (m *StateManager) State() YinYangState {
 	return m.state
 }
 
@@ -88,9 +88,9 @@ func (m *StateManager) updateState(isYang bool, high, low decimal.Decimal) {
 		m.lastDir = isYang
 		m.state.IsYang = isYang
 		if isYang {
-			m.state.Yang1 = backtest.YinYangElement{High: high, Low: low, IsValid: true}
+			m.state.Yang1 = YinYangElement{High: high, Low: low, IsValid: true}
 		} else {
-			m.state.Yin1 = backtest.YinYangElement{High: high, Low: low, IsValid: true}
+			m.state.Yin1 = YinYangElement{High: high, Low: low, IsValid: true}
 		}
 		return
 	}
@@ -104,10 +104,10 @@ func (m *StateManager) updateState(isYang bool, high, low decimal.Decimal) {
 	} else {
 		if isYang {
 			m.state.Yang2 = m.state.Yang1
-			m.state.Yang1 = backtest.YinYangElement{High: high, Low: low, IsValid: true}
+			m.state.Yang1 = YinYangElement{High: high, Low: low, IsValid: true}
 		} else {
 			m.state.Yin2 = m.state.Yin1
-			m.state.Yin1 = backtest.YinYangElement{High: high, Low: low, IsValid: true}
+			m.state.Yin1 = YinYangElement{High: high, Low: low, IsValid: true}
 		}
 		m.state.IsYang = isYang
 	}
@@ -115,7 +115,7 @@ func (m *StateManager) updateState(isYang bool, high, low decimal.Decimal) {
 	m.lastDir = isYang
 }
 
-func mergeElement(elem *backtest.YinYangElement, high, low decimal.Decimal) {
+func mergeElement(elem *YinYangElement, high, low decimal.Decimal) {
 	if !elem.IsValid {
 		elem.High = high
 		elem.Low = low
@@ -158,10 +158,10 @@ func (m *StateManager) GenerateTempState(isYangOverride bool, high, low decimal.
 	} else {
 		if isYangOverride {
 			m.tempState.Yang2 = m.tempState.Yang1
-			m.tempState.Yang1 = backtest.YinYangElement{High: high, Low: low, IsValid: true}
+			m.tempState.Yang1 = YinYangElement{High: high, Low: low, IsValid: true}
 		} else {
 			m.tempState.Yin2 = m.tempState.Yin1
-			m.tempState.Yin1 = backtest.YinYangElement{High: high, Low: low, IsValid: true}
+			m.tempState.Yin1 = YinYangElement{High: high, Low: low, IsValid: true}
 		}
 		m.tempState.IsYang = isYangOverride
 	}
@@ -170,11 +170,11 @@ func (m *StateManager) GenerateTempState(isYangOverride bool, high, low decimal.
 	m.tempUsed = false
 }
 
-func (m *StateManager) GetTempState() (backtest.YinYangState, bool) {
+func (m *StateManager) GetTempState() (YinYangState, bool) {
 	if m.hasTempState && !m.tempUsed {
 		return m.tempState, true
 	}
-	return backtest.YinYangState{}, false
+	return YinYangState{}, false
 }
 
 func (m *StateManager) MarkTempUsed() {
@@ -184,7 +184,7 @@ func (m *StateManager) MarkTempUsed() {
 func (m *StateManager) ClearTempState() {
 	m.hasTempState = false
 	m.tempUsed = false
-	m.tempState = backtest.YinYangState{}
+	m.tempState = YinYangState{}
 }
 
 func (m *StateManager) HasTempState() bool {

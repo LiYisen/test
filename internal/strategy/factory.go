@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"sync"
 
+	"futures-backtest/internal/backtest"
+	"futures-backtest/internal/strategy/ma"
 	"futures-backtest/internal/strategy/yinyang"
 )
 
@@ -69,12 +71,10 @@ func (r *FactoryRegistry) ListConfigs() []StrategyConfig {
 	for _, f := range r.factories {
 		config := StrategyConfig{
 			Name:        f.Name(),
+			DisplayName: f.DisplayName(),
 			Description: f.Description(),
+			Params:      f.GetParams(),
 			Enabled:     true,
-		}
-		if yf, ok := f.(*YinYangFactory); ok {
-			config.DisplayName = yf.DisplayName()
-			config.Params = yf.GetParams()
 		}
 		list = append(list, config)
 	}
@@ -124,8 +124,110 @@ func (f *YinYangFactory) Create(params map[string]interface{}) SignalStrategy {
 	return yinyang.NewYinYangAdapter(strategy)
 }
 
+func (f *YinYangFactory) CreateRolloverHandler(strategy SignalStrategy) backtest.RolloverHandler {
+	adapter, ok := strategy.(*yinyang.YinYangAdapter)
+	if !ok {
+		return nil
+	}
+	return yinyang.NewRolloverHandler(adapter.GetStrategy())
+}
+
+func (f *YinYangFactory) CreateStateRecorder() backtest.StateRecorder {
+	return yinyang.NewYinYangStateRecorder()
+}
+
+type MAFactory struct{}
+
+func NewMAFactory() *MAFactory {
+	return &MAFactory{}
+}
+
+func (f *MAFactory) Name() string {
+	return "ma"
+}
+
+func (f *MAFactory) DisplayName() string {
+	return "双均线交叉策略"
+}
+
+func (f *MAFactory) Description() string {
+	return "基于双均线交叉的趋势跟踪策略，短期均线上穿长期均线产生做多信号（金叉），短期均线下穿长期均线产生做空信号（死叉），信号在下一根K线开盘价执行"
+}
+
+func (f *MAFactory) GetParams() []StrategyParamConfig {
+	return []StrategyParamConfig{
+		{
+			Name:        "short_period",
+			DisplayName: "短期均线周期",
+			Type:        "int",
+			Default:     5,
+			Min:         2,
+			Max:         50,
+			Description: "短期移动平均线的计算周期",
+		},
+		{
+			Name:        "long_period",
+			DisplayName: "长期均线周期",
+			Type:        "int",
+			Default:     20,
+			Min:         5,
+			Max:         200,
+			Description: "长期移动平均线的计算周期",
+		},
+		{
+			Name:        "leverage",
+			DisplayName: "杠杆系数",
+			Type:        "float",
+			Default:     1.0,
+			Min:         0.1,
+			Max:         10.0,
+			Description: "账户承担的百分比风险系数",
+		},
+	}
+}
+
+func (f *MAFactory) Create(params map[string]interface{}) SignalStrategy {
+	shortPeriod := 5
+	longPeriod := 20
+	leverage := 1.0
+
+	if v, ok := params["short_period"]; ok {
+		if f, ok := v.(float64); ok {
+			shortPeriod = int(f)
+		}
+	}
+
+	if v, ok := params["long_period"]; ok {
+		if f, ok := v.(float64); ok {
+			longPeriod = int(f)
+		}
+	}
+
+	if v, ok := params["leverage"]; ok {
+		if f, ok := v.(float64); ok {
+			leverage = f
+		}
+	}
+
+	strategy := ma.NewMAStrategy(shortPeriod, longPeriod, leverage)
+	return ma.NewMAAdapter(strategy)
+}
+
+func (f *MAFactory) CreateRolloverHandler(strategy SignalStrategy) backtest.RolloverHandler {
+	adapter, ok := strategy.(*ma.MAAdapter)
+	if !ok {
+		return nil
+	}
+	return ma.NewRolloverHandler(adapter.GetStrategy())
+}
+
+func (f *MAFactory) CreateStateRecorder() backtest.StateRecorder {
+	return backtest.NewDefaultStateRecorder()
+}
+
 var DefaultRegistry = NewFactoryRegistry()
 
 func init() {
 	DefaultRegistry.Register(NewYinYangFactory())
+	DefaultRegistry.Register(NewMAFactory())
 }

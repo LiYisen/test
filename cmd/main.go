@@ -11,7 +11,6 @@ import (
 	"futures-backtest/internal/backtest"
 	"futures-backtest/internal/data"
 	"futures-backtest/internal/strategy"
-	"futures-backtest/internal/strategy/yinyang"
 
 	"github.com/shopspring/decimal"
 )
@@ -103,15 +102,10 @@ func main() {
 	}
 	fmt.Printf("[4/5] 识别主力合约完成，共 %d 天\n", len(dominantMap))
 
-	// 创建换月处理器（阴阳线策略特有）
-	var rollover backtest.RolloverHandler
-	if adapter, ok := strategyInstance.(*yinyang.YinYangAdapter); ok {
-		rollover = yinyang.NewRolloverHandler(adapter.GetStrategy())
-	}
+	rollover := factory.CreateRolloverHandler(strategyInstance)
+	stateRecorder := factory.CreateStateRecorder()
 
 	signalEngine := backtest.NewSignalEngine(allKlines, dominantMap, strategyInstance, rollover)
-
-	stateRecorder := yinyang.NewYinYangStateRecorder()
 	signalEngine.SetStateRecorder(stateRecorder)
 
 	signals, err := signalEngine.Calculate()
