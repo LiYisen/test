@@ -314,19 +314,13 @@
         <div class="card hidden" id="chartsCard">
             <h2>组合图表</h2>
             <div class="tabs">
-                <div class="tab active" data-tab="equity">组合资金曲线</div>
-                <div class="tab" data-tab="drawdown">组合回撤曲线</div>
+                <div class="tab active" data-tab="equity">组合资金曲线与回撤</div>
                 <div class="tab" data-tab="daily">组合日收益</div>
                 <div class="tab" data-tab="components">各品种对比</div>
             </div>
             <div class="tab-content active" id="tab-equity">
                 <div class="chart-container">
                     <canvas id="equityChart"></canvas>
-                </div>
-            </div>
-            <div class="tab-content" id="tab-drawdown">
-                <div class="chart-container">
-                    <canvas id="drawdownChart"></canvas>
                 </div>
             </div>
             <div class="tab-content" id="tab-daily">
@@ -450,7 +444,6 @@
                 
                 displayStats(result.statistics);
                 drawEquityChart(result.daily_records);
-                drawDrawdownChart(result.daily_records);
                 drawDailyChart(result.daily_records);
                 drawComponentsChart(result.daily_records);
                 
@@ -508,47 +501,6 @@
             const ctx = document.getElementById('equityChart').getContext('2d');
             if (charts.equity) charts.equity.destroy();
             
-            charts.equity = new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: records.map(r => r.date),
-                    datasets: [{
-                        label: '组合净值',
-                        data: records.map(r => parseFloat(r.total_value)),
-                        borderColor: '#64ffda',
-                        backgroundColor: 'rgba(100, 255, 218, 0.05)',
-                        fill: true,
-                        tension: 0.1,
-                        pointRadius: 0,
-                        borderWidth: 1.5
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    interaction: { intersect: false, mode: 'index' },
-                    plugins: {
-                        legend: { display: false },
-                        tooltip: { callbacks: { label: (ctx) => '净值: ' + ctx.parsed.y.toFixed(4) } }
-                    },
-                    scales: {
-                        x: {
-                            grid: { color: '#2a2a4a' },
-                            ticks: { color: '#8892b0', maxTicksLimit: 10 }
-                        },
-                        y: {
-                            grid: { color: '#2a2a4a' },
-                            ticks: { color: '#8892b0' }
-                        }
-                    }
-                }
-            });
-        }
-
-        function drawDrawdownChart(records) {
-            const ctx = document.getElementById('drawdownChart').getContext('2d');
-            if (charts.drawdown) charts.drawdown.destroy();
-            
             let peak = 1;
             const drawdowns = records.map(r => {
                 const val = parseFloat(r.total_value);
@@ -556,27 +508,60 @@
                 return (peak - val) / peak;
             });
             
-            charts.drawdown = new Chart(ctx, {
+            charts.equity = new Chart(ctx, {
                 type: 'line',
                 data: {
                     labels: records.map(r => r.date),
-                    datasets: [{
-                        label: '回撤比例',
-                        data: drawdowns,
-                        borderColor: '#ff6b6b',
-                        backgroundColor: 'rgba(255, 107, 107, 0.05)',
-                        fill: true,
-                        tension: 0.1,
-                        pointRadius: 0,
-                        borderWidth: 1.5
-                    }]
+                    datasets: [
+                        {
+                            label: '组合净值',
+                            data: records.map(r => parseFloat(r.total_value)),
+                            borderColor: '#64ffda',
+                            backgroundColor: 'rgba(100, 255, 218, 0.05)',
+                            fill: true,
+                            tension: 0.1,
+                            pointRadius: 0,
+                            borderWidth: 1.5,
+                            yAxisID: 'y'
+                        },
+                        {
+                            label: '回撤',
+                            data: drawdowns,
+                            borderColor: '#ff6b6b',
+                            backgroundColor: 'rgba(255, 107, 107, 0.05)',
+                            fill: true,
+                            tension: 0.1,
+                            pointRadius: 0,
+                            borderWidth: 1.5,
+                            yAxisID: 'y1'
+                        }
+                    ]
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
+                    interaction: { intersect: false, mode: 'index' },
                     plugins: {
-                        legend: { display: false },
-                        tooltip: { callbacks: { label: (ctx) => '回撤: ' + (ctx.parsed.y * 100).toFixed(2) + '%' } }
+                        legend: {
+                            display: true,
+                            position: 'top',
+                            labels: {
+                                color: '#8892b0',
+                                usePointStyle: true,
+                                padding: 15
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: (ctx) => {
+                                    if (ctx.dataset.label === '回撤') {
+                                        return '回撤: ' + (ctx.parsed.y * 100).toFixed(2) + '%';
+                                    } else {
+                                        return '净值: ' + ctx.parsed.y.toFixed(4);
+                                    }
+                                }
+                            }
+                        }
                     },
                     scales: {
                         x: {
@@ -584,8 +569,33 @@
                             ticks: { color: '#8892b0', maxTicksLimit: 10 }
                         },
                         y: {
+                            type: 'linear',
+                            display: true,
+                            position: 'left',
                             grid: { color: '#2a2a4a' },
-                            ticks: { color: '#8892b0', callback: (v) => (v * 100).toFixed(1) + '%' }
+                            ticks: { color: '#64ffda' },
+                            title: {
+                                display: true,
+                                text: '净值',
+                                color: '#64ffda'
+                            }
+                        },
+                        y1: {
+                            type: 'linear',
+                            display: true,
+                            position: 'right',
+                            grid: {
+                                drawOnChartArea: false,
+                            },
+                            ticks: {
+                                color: '#ff6b6b',
+                                callback: (v) => (v * 100).toFixed(1) + '%'
+                            },
+                            title: {
+                                display: true,
+                                text: '回撤',
+                                color: '#ff6b6b'
+                            }
                         }
                     }
                 }
