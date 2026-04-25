@@ -20,6 +20,7 @@ type StrategyFactory interface {
 	GetParams() []StrategyParamConfig
 	CreateRolloverHandler(strategy SignalStrategy) backtest.RolloverHandler
 	CreateStateRecorder() backtest.StateRecorder
+	GetWarmupDays(params map[string]interface{}) int
 }
 
 type KLineWithContract = backtest.KLineWithContract

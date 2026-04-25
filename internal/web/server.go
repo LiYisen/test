@@ -162,11 +162,44 @@ func (s *Server) runBacktest(req BacktestRequest, resultID string) (*BacktestRes
 		return nil, fmt.Errorf("获取交易日历失败: %w", err)
 	}
 
-	contractSymbols := generateContractSymbols(req.Symbol, req.StartDate, req.EndDate)
+	factory, err := strategy.DefaultRegistry.Get(req.Strategy)
+	if err != nil {
+		return nil, fmt.Errorf("获取策略失败: %w", err)
+	}
+
+	params := make(map[string]interface{})
+	if req.Params != nil {
+		for k, v := range req.Params {
+			params[k] = v
+		}
+	}
+	if _, ok := params["leverage"]; !ok {
+		params["leverage"] = req.Leverage
+	}
+
+	warmupDays := factory.GetWarmupDays(params)
+
+	var warmupStartDate string
+	var backtestStartDateFormatted string
+	if warmupDays > 0 {
+		startDate, err := time.Parse("20060102", req.StartDate)
+		if err != nil {
+			return nil, fmt.Errorf("解析开始日期失败: %w", err)
+		}
+
+		warmupStart := startDate.AddDate(0, 0, -warmupDays*2)
+		warmupStartDate = warmupStart.Format("20060102")
+		backtestStartDateFormatted = startDate.Format("2006-01-02")
+	} else {
+		warmupStartDate = req.StartDate
+		backtestStartDateFormatted = ""
+	}
+
+	contractSymbols := generateContractSymbols(req.Symbol, warmupStartDate, req.EndDate)
 
 	var allKlines []backtest.KLineWithContract
 	for _, cs := range contractSymbols {
-		klines, err := s.dataManager.GetFuturesKLine(cs, req.StartDate, req.EndDate)
+		klines, err := s.dataManager.GetFuturesKLine(cs, warmupStartDate, req.EndDate)
 		if err != nil {
 			continue
 		}
@@ -193,7 +226,7 @@ func (s *Server) runBacktest(req BacktestRequest, resultID string) (*BacktestRes
 	}
 
 	identifier := data.NewDominantContractIdentifier(s.dataManager)
-	dominantResult, err := identifier.Identify(req.Symbol, allKlines, req.StartDate, req.EndDate)
+	dominantResult, err := identifier.Identify(req.Symbol, allKlines, warmupStartDate, req.EndDate)
 	if err != nil {
 		return nil, fmt.Errorf("识别主力合约失败: %w", err)
 	}
@@ -204,21 +237,6 @@ func (s *Server) runBacktest(req BacktestRequest, resultID string) (*BacktestRes
 		dominantMap[dateStr] = sym
 	}
 
-	factory, err := strategy.DefaultRegistry.Get(req.Strategy)
-	if err != nil {
-		return nil, fmt.Errorf("获取策略失败: %w", err)
-	}
-
-	params := make(map[string]interface{})
-	if req.Params != nil {
-		for k, v := range req.Params {
-			params[k] = v
-		}
-	}
-	if _, ok := params["leverage"]; !ok {
-		params["leverage"] = req.Leverage
-	}
-
 	sigStrategy := factory.Create(params)
 
 	rollover := factory.CreateRolloverHandler(sigStrategy)
@@ -226,6 +244,7 @@ func (s *Server) runBacktest(req BacktestRequest, resultID string) (*BacktestRes
 
 	signalEngine := backtest.NewSignalEngine(allKlines, dominantMap, sigStrategy, rollover)
 	signalEngine.SetStateRecorder(stateRecorder)
+	signalEngine.SetWarmupDays(warmupDays, backtestStartDateFormatted)
 
 	signals, err := signalEngine.Calculate()
 	if err != nil {

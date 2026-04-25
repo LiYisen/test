@@ -136,6 +136,10 @@ func (f *YinYangFactory) CreateStateRecorder() backtest.StateRecorder {
 	return yinyang.NewYinYangStateRecorder()
 }
 
+func (f *YinYangFactory) GetWarmupDays(params map[string]interface{}) int {
+	return 0
+}
+
 type MAFactory struct{}
 
 func NewMAFactory() *MAFactory {
@@ -223,6 +227,16 @@ func (f *MAFactory) CreateRolloverHandler(strategy SignalStrategy) backtest.Roll
 
 func (f *MAFactory) CreateStateRecorder() backtest.StateRecorder {
 	return backtest.NewDefaultStateRecorder()
+}
+
+func (f *MAFactory) GetWarmupDays(params map[string]interface{}) int {
+	longPeriod := 20
+	if v, ok := params["long_period"]; ok {
+		if f, ok := v.(float64); ok {
+			longPeriod = int(f)
+		}
+	}
+	return longPeriod + 1
 }
 
 var DefaultRegistry = NewFactoryRegistry()

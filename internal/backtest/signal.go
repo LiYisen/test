@@ -25,15 +25,17 @@ type pendingRolloverInfo struct {
 
 // SignalEngine 信号引擎，负责生成交易信号
 type SignalEngine struct {
-	klines          []KLineWithContract
-	dominantMap     map[string]string
-	strategy        SignalStrategy
-	rollover        RolloverHandler
-	klineIndex      map[string]KLineWithContract
-	klinesByDate    map[string][]KLineWithContract
-	klinesBySymbol  map[string][]KLineWithContract
-	pendingRollover *pendingRolloverInfo
-	stateRecorder   StateRecorder
+	klines            []KLineWithContract
+	dominantMap       map[string]string
+	strategy          SignalStrategy
+	rollover          RolloverHandler
+	klineIndex        map[string]KLineWithContract
+	klinesByDate      map[string][]KLineWithContract
+	klinesBySymbol    map[string][]KLineWithContract
+	pendingRollover   *pendingRolloverInfo
+	stateRecorder     StateRecorder
+	warmupDays        int
+	backtestStartDate string
 }
 
 func NewSignalEngine(
@@ -73,6 +75,11 @@ func (e *SignalEngine) SetStateRecorder(recorder StateRecorder) {
 	e.stateRecorder = recorder
 }
 
+func (e *SignalEngine) SetWarmupDays(days int, startDate string) {
+	e.warmupDays = days
+	e.backtestStartDate = startDate
+}
+
 func (e *SignalEngine) Calculate() ([]TradeSignal, error) {
 	var allSignals []TradeSignal
 	previousSymbol := ""
@@ -87,12 +94,20 @@ func (e *SignalEngine) Calculate() ([]TradeSignal, error) {
 			continue
 		}
 
+		isWarmup := e.backtestStartDate != "" && kl.Date < e.backtestStartDate
+
 		if dateKlines, ok := e.klinesByDate[kl.Date]; ok {
 			for _, dateKl := range dateKlines {
 				if dateKl.Symbol != kl.Symbol {
 					e.strategy.UpdateStateOnly(dateKl)
 				}
 			}
+		}
+
+		if isWarmup {
+			e.strategy.UpdateStateOnly(kl)
+			previousSymbol = kl.Symbol
+			continue
 		}
 
 		if previousSymbol != "" && previousSymbol != kl.Symbol {
