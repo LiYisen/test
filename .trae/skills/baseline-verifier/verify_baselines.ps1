@@ -48,7 +48,7 @@ foreach ($file in $baselineFiles) {
         Start-Sleep -Seconds 1
         
         $pattern = "${symbol}_${strategy}_${startDate}_${endDate}_*_*.json"
-        $latestFile = Get-ChildItem -Path "$retDir\$pattern" -ErrorAction SilentlyContinue | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+        $latestFile = Get-ChildItem -Path "$retDir\$pattern" -ErrorAction SilentlyContinue | Where-Object { $_.Name -notmatch '_baseline\.json$' } | Sort-Object LastWriteTime -Descending | Select-Object -First 1
         
         if (-not $latestFile) {
             Write-Host "[FAIL] Result file not found" -ForegroundColor Red

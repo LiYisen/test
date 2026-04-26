@@ -74,6 +74,52 @@ type StrategyFactory interface {
 - **止损价**: 开仓时确定，固定为阴1阳1的高低点
 - **反向信号价**: 持仓期间动态更新
 
+### 4.4 持仓状态处理时序（重要）
+
+持仓状态下的每日处理流程：
+
+```
+处理K线T时（持仓状态）：
+  Step 1: 如果存在临时阴阳集合（由K线T-1生成）
+    → 使用临时集合更新反向信号价
+  
+  Step 2: 使用T-1日计算的反向信号价进行触发判断
+    → 多头：Low <= reverseSignalPrice ?
+    → 空头：High >= reverseSignalPrice ?
+  
+  Step 3: 标记临时集合为已使用（TempUsed = true）
+  
+  Step 4: 更新阴阳集合状态（使用KLine_T数据）
+    → sm.Update(kline.KLineData)
+  
+  Step 5: 如果触发反向信号
+    → 使用旧的reverseSignalPrice平仓
+    → 使用更新后的状态(sm.State())计算新开仓杠杆
+    → 根据条件生成新的临时阴阳集合
+    → 更新反向信号价（用于T+1日）
+  
+  Step 6: 如果未触发
+    → 基于T日状态更新反向信号价（用于T+1日）
+```
+
+**关键说明**：
+- 触发判断使用的是T-1日收盘后计算的信号价（符合时序性）
+- 新开仓杠杆计算使用T日更新后的状态（为T+1日做准备）
+- 临时阴阳集合仅影响下一根K线的信号价格计算，使用后立即标记为已使用
+
+### 4.5 临时阴阳集合（TempState）
+
+**生成时机**：逆势开仓时（做多+阴线，或做空+阳线）
+
+**使用规则**：
+- 仅影响下一根K线的信号价格计算
+- 下一根K线使用后自动标记为已使用（tempUsed = true）
+- 不影响正常阴阳集合的状态更新
+
+**信号价格计算优先级**：
+1. 如果存在未使用的临时集合 → 使用临时集合的状态方向(IsYang)
+2. 如果不存在临时集合 → 使用当前K线的实际方向(currentIsYang)
+
 ## 5. 基线验证规则
 
 **重要**: 每次代码改动后，必须验证基线结果，防止改动引发回归问题。
@@ -109,13 +155,25 @@ go run cmd/web/main.go
 
 如果是有意的修改导致结果变化，更新基线文件：
 
+**基线文件命名规范**：
+```
+${symbol}_${strategy}_${startDate}_${endDate}_${leverage}_baseline.json
+```
+
+**更新步骤**：
+
 ```powershell
 # Windows
-$symbol = "RB"; $strategy = "yinyang"; $startDate = "20240101"; $endDate = "20241231"
-$pattern = "${symbol}_${strategy}_${startDate}_${endDate}_*_*.json"
-$latestFile = Get-ChildItem -Path "ret\$pattern" | Sort-Object LastWriteTime -Descending | Select-Object -First 1
-Copy-Item $latestFile.FullName -Destination "baselines\${symbol}_${strategy}_${startDate}_${endDate}_baseline.json"
+$symbol = "RB"; $strategy = "yinyang"; $startDate = "20240101"; $endDate = "20241231"; $leverage = 3
+$pattern = "${symbol}_${strategy}_${startDate}_${endDate}_${leverage}_*_*.json"
+$latestFile = Get-ChildItem -Path "ret\$pattern" | Where-Object { $_.Name -notmatch '_baseline\.json$' } | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+Copy-Item $latestFile.FullName -Destination "baselines\${symbol}_${strategy}_${startDate}_${endDate}_${leverage}_baseline.json"
 ```
+
+**注意**：
+- 基线文件固定使用 `_baseline.json` 后缀
+- 回测结果文件使用 `_<timestamp>.json` 后缀（如 `_1777006858.json`）
+- 验证脚本会自动排除 `_baseline.json` 文件，避免将基线文件误当作回测结果
 
 ## 6. 测试与验证
 

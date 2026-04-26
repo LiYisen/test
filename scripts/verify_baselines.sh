@@ -60,7 +60,7 @@ for file in "${baseline_files[@]}"; do
     sleep 1
     
     pattern="${symbol}_${strategy}_${start_date}_${end_date}_*_*.json"
-    latest_file=$(ls -t ret/$pattern 2>/dev/null | head -n 1)
+    latest_file=$(ls -t ret/$pattern 2>/dev/null | grep -v '_baseline\.json$' | head -n 1)
     
     if [ -z "$latest_file" ]; then
         echo "✗ 未找到结果文件"
