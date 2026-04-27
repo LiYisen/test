@@ -15,50 +15,45 @@ type FundConfigFile struct {
 }
 
 var (
-	configMu     sync.RWMutex
-	fundConfigs  map[string]*FundConfig
-	configLoaded bool
+	configMu    sync.RWMutex
+	fundConfigs map[string]*FundConfig
+	configOnce  sync.Once
+	configErr   error
 )
 
 func LoadFundConfig(configPath string) error {
-	configMu.Lock()
-	defer configMu.Unlock()
-
-	if configLoaded {
-		return nil
-	}
-
-	file, err := os.Open(configPath)
-	if err != nil {
-		if os.IsNotExist(err) {
-			fundConfigs = make(map[string]*FundConfig)
-			configLoaded = true
-			return nil
+	configOnce.Do(func() {
+		file, err := os.Open(configPath)
+		if err != nil {
+			if os.IsNotExist(err) {
+				fundConfigs = make(map[string]*FundConfig)
+				return
+			}
+			configErr = fmt.Errorf("打开基金配置文件失败: %w", err)
+			return
 		}
-		return fmt.Errorf("打开基金配置文件失败: %w", err)
-	}
-	defer file.Close()
+		defer file.Close()
 
-	var configFile FundConfigFile
-	if err := json.NewDecoder(file).Decode(&configFile); err != nil {
-		return fmt.Errorf("解析基金配置文件失败: %w", err)
-	}
+		var configFile FundConfigFile
+		if err := json.NewDecoder(file).Decode(&configFile); err != nil {
+			configErr = fmt.Errorf("解析基金配置文件失败: %w", err)
+			return
+		}
 
-	fundConfigs = make(map[string]*FundConfig)
-	for i := range configFile.Funds {
-		fund := &configFile.Funds[i]
-		fundConfigs[fund.ID] = fund
-	}
-
-	configLoaded = true
-	return nil
+		fundConfigs = make(map[string]*FundConfig)
+		for i := range configFile.Funds {
+			fund := &configFile.Funds[i]
+			fundConfigs[fund.ID] = fund
+		}
+	})
+	return configErr
 }
 
 func GetFundConfig(fundID string) (*FundConfig, error) {
 	configMu.RLock()
 	defer configMu.RUnlock()
 
-	if !configLoaded {
+	if fundConfigs == nil {
 		return nil, fmt.Errorf("基金配置未加载")
 	}
 
@@ -74,7 +69,7 @@ func GetAllFundConfigs() ([]*FundConfig, error) {
 	configMu.RLock()
 	defer configMu.RUnlock()
 
-	if !configLoaded {
+	if fundConfigs == nil {
 		return nil, fmt.Errorf("基金配置未加载")
 	}
 
@@ -89,7 +84,7 @@ func SaveFundConfig(configPath string, fund *FundConfig) error {
 	configMu.Lock()
 	defer configMu.Unlock()
 
-	if fundConfigs == nil || !configLoaded {
+	if fundConfigs == nil {
 		fundConfigs = make(map[string]*FundConfig)
 
 		file, err := os.Open(configPath)
@@ -103,7 +98,6 @@ func SaveFundConfig(configPath string, fund *FundConfig) error {
 			}
 			file.Close()
 		}
-		configLoaded = true
 	}
 
 	fundConfigs[fund.ID] = fund

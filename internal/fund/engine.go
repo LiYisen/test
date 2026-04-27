@@ -309,11 +309,11 @@ func (e *FundEngine) calculateFundStatistics(records []FundDailyRecord, results 
 	stats.TotalReturn = records[len(records)-1].TotalValue.Sub(decOne)
 
 	if len(records) > 1 {
-		tradingDays := float64(len(records))
-		years := tradingDays / 250.0
-		if years > 0 {
-			fv, _ := records[len(records)-1].TotalValue.Float64()
-			stats.AnnualReturn = decimal.NewFromFloat(math.Pow(fv, 1/years) - 1)
+		tradingDays := decimal.NewFromInt(int64(len(records)))
+		years := tradingDays.Div(decimal.NewFromInt(250))
+		if years.GreaterThan(decimal.Zero) {
+			finalValue := records[len(records)-1].TotalValue
+			stats.AnnualReturn = finalValue.Pow(decimal.NewFromInt(1).Div(years)).Sub(decOne)
 		}
 	}
 
