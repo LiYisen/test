@@ -137,7 +137,7 @@ func (f *YinYangFactory) CreateStateRecorder() backtest.StateRecorder {
 }
 
 func (f *YinYangFactory) GetWarmupDays(params map[string]interface{}) int {
-	return 20
+	return 0
 }
 
 type MAFactory struct{}

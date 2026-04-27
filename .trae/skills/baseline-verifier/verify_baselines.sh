@@ -152,6 +152,11 @@ for FILE in $BASELINE_FILES; do
         FAIL_COUNT=$((FAIL_COUNT + 1))
     fi
     
+    if [ -f "$LATEST_FILE" ]; then
+        rm -f "$LATEST_FILE"
+        echo -e "\033[90mCleaned up result file: $(basename "$LATEST_FILE")\033[0m"
+    fi
+    
     echo ""
 done
 

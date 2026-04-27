@@ -147,24 +147,28 @@ func (s *Server) handleBacktest(c *gin.Context) {
 	resultID := fmt.Sprintf("%s_%s_%s_%s_%.0f_%d",
 		req.Symbol, req.Strategy, req.StartDate, req.EndDate, req.Leverage, time.Now().Unix())
 
-	result, err := s.runBacktest(req, resultID)
+	result, actualResultID, err := s.runBacktest(req, resultID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
+	if actualResultID != "" {
+		result.ID = actualResultID
+	}
+
 	c.JSON(http.StatusOK, result)
 }
 
-func (s *Server) runBacktest(req BacktestRequest, resultID string) (*BacktestResponse, error) {
+func (s *Server) runBacktest(req BacktestRequest, resultID string) (*BacktestResponse, string, error) {
 	_, err := s.dataManager.GetTradeCalendar(req.StartDate, req.EndDate)
 	if err != nil {
-		return nil, fmt.Errorf("获取交易日历失败: %w", err)
+		return nil, "", fmt.Errorf("获取交易日历失败: %w", err)
 	}
 
 	factory, err := strategy.DefaultRegistry.Get(req.Strategy)
 	if err != nil {
-		return nil, fmt.Errorf("获取策略失败: %w", err)
+		return nil, "", fmt.Errorf("获取策略失败: %w", err)
 	}
 
 	params := make(map[string]interface{})
@@ -172,9 +176,6 @@ func (s *Server) runBacktest(req BacktestRequest, resultID string) (*BacktestRes
 		for k, v := range req.Params {
 			params[k] = v
 		}
-	}
-	if _, ok := params["leverage"]; !ok {
-		params["leverage"] = req.Leverage
 	}
 
 	warmupDays := factory.GetWarmupDays(params)
@@ -184,11 +185,19 @@ func (s *Server) runBacktest(req BacktestRequest, resultID string) (*BacktestRes
 	if warmupDays > 0 {
 		startDate, err := time.Parse("20060102", req.StartDate)
 		if err != nil {
-			return nil, fmt.Errorf("解析开始日期失败: %w", err)
+			return nil, "", fmt.Errorf("解析开始日期失败: %w", err)
 		}
 
-		warmupStart := startDate.AddDate(0, 0, -warmupDays*2)
-		warmupStartDate = warmupStart.Format("20060102")
+		requiredTradingDays := warmupDays + 5
+
+		calendar, err := s.dataManager.GetTradeCalendar("20000101", req.StartDate)
+		if err == nil && len(calendar) > 0 {
+			warmupStartDate = calculateWarmupStartDate(calendar, req.StartDate, requiredTradingDays)
+		} else {
+			warmupStart := startDate.AddDate(0, 0, -requiredTradingDays*2)
+			warmupStartDate = warmupStart.Format("20060102")
+		}
+
 		backtestStartDateFormatted = startDate.Format("2006-01-02")
 	} else {
 		warmupStartDate = req.StartDate
@@ -222,13 +231,13 @@ func (s *Server) runBacktest(req BacktestRequest, resultID string) (*BacktestRes
 	}
 
 	if len(allKlines) == 0 {
-		return nil, fmt.Errorf("未获取到任何K线数据")
+		return nil, "", fmt.Errorf("未获取到任何K线数据")
 	}
 
 	identifier := data.NewDominantContractIdentifier(s.dataManager)
 	dominantResult, err := identifier.Identify(req.Symbol, allKlines, warmupStartDate, req.EndDate)
 	if err != nil {
-		return nil, fmt.Errorf("识别主力合约失败: %w", err)
+		return nil, "", fmt.Errorf("识别主力合约失败: %w", err)
 	}
 
 	dominantMap := make(map[string]string, len(dominantResult))
@@ -239,6 +248,15 @@ func (s *Server) runBacktest(req BacktestRequest, resultID string) (*BacktestRes
 
 	sigStrategy := factory.Create(params)
 
+	var actualLeverage float64 = 1.0
+	if v, ok := params["leverage"]; ok {
+		if f, ok := v.(float64); ok {
+			actualLeverage = f
+		}
+	}
+	resultID = fmt.Sprintf("%s_%s_%s_%s_%.0f_%d",
+		req.Symbol, req.Strategy, req.StartDate, req.EndDate, actualLeverage, time.Now().Unix())
+
 	rollover := factory.CreateRolloverHandler(sigStrategy)
 	stateRecorder := factory.CreateStateRecorder()
 
@@ -248,32 +266,39 @@ func (s *Server) runBacktest(req BacktestRequest, resultID string) (*BacktestRes
 
 	signals, err := signalEngine.Calculate()
 	if err != nil {
-		return nil, fmt.Errorf("计算交易信号失败: %w", err)
+		return nil, "", fmt.Errorf("计算交易信号失败: %w", err)
 	}
 
 	dominantKlines := filterDominantKlines(allKlines, dominantMap)
 	portfolioEngine := backtest.NewPortfolioEngine()
 	dailyRecords, positionReturns, err := portfolioEngine.Calculate(signals, dominantKlines)
 	if err != nil {
-		return nil, fmt.Errorf("计算资金收益失败: %w", err)
+		return nil, "", fmt.Errorf("计算资金收益失败: %w", err)
 	}
 
 	stats := backtest.CalculateStatistics(dailyRecords, positionReturns)
+
+	filteredKlines := dominantKlines
+	filteredDailyRecords := dailyRecords
+	if warmupDays > 0 {
+		filteredKlines = filterKlinesByDate(dominantKlines, req.StartDate)
+		filteredDailyRecords = filterDailyRecordsByDate(dailyRecords, req.StartDate)
+	}
 
 	resultData := &ResultData{
 		ID:              resultID,
 		Request:         req,
 		Signals:         signals,
-		DailyRecords:    dailyRecords,
+		DailyRecords:    filteredDailyRecords,
 		PositionReturns: positionReturns,
 		Statistics:      stats,
 		StateHistory:    stateRecorder.GetStateHistory(),
 		DominantMap:     dominantMap,
-		Klines:          dominantKlines,
+		Klines:          filteredKlines,
 	}
 
 	if err := s.saveResult(resultData); err != nil {
-		return nil, fmt.Errorf("保存结果失败: %w", err)
+		return nil, "", fmt.Errorf("保存结果失败: %w", err)
 	}
 
 	return &BacktestResponse{
@@ -284,7 +309,7 @@ func (s *Server) runBacktest(req BacktestRequest, resultID string) (*BacktestRes
 		SignalCount: len(signals),
 		TradeCount:  len(positionReturns),
 		TradingDays: len(dailyRecords),
-	}, nil
+	}, resultID, nil
 }
 
 func (s *Server) handleListResults(c *gin.Context) {
@@ -664,6 +689,58 @@ func filterDominantKlines(allKlines []backtest.KLineWithContract, dominantMap ma
 		}
 	}
 	return result
+}
+
+func calculateWarmupStartDate(calendar []data.TradeDate, startDate string, requiredDays int) string {
+	var tradingDays []string
+	for _, td := range calendar {
+		if td.IsTradingDay {
+			tradingDays = append(tradingDays, td.Date)
+		}
+	}
+
+	startIdx := -1
+	for i, date := range tradingDays {
+		if date == startDate {
+			startIdx = i
+			break
+		}
+	}
+
+	if startIdx == -1 {
+		startDateParsed, _ := time.Parse("20060102", startDate)
+		warmupStart := startDateParsed.AddDate(0, 0, -requiredDays*2)
+		return warmupStart.Format("20060102")
+	}
+
+	warmupIdx := startIdx - requiredDays
+	if warmupIdx < 0 {
+		warmupIdx = 0
+	}
+
+	return tradingDays[warmupIdx]
+}
+
+func filterKlinesByDate(klines []backtest.KLineWithContract, startDate string) []backtest.KLineWithContract {
+	var filtered []backtest.KLineWithContract
+	startDateFormatted := startDate[:4] + "-" + startDate[4:6] + "-" + startDate[6:8]
+	for _, kl := range klines {
+		if kl.Date >= startDateFormatted {
+			filtered = append(filtered, kl)
+		}
+	}
+	return filtered
+}
+
+func filterDailyRecordsByDate(records []backtest.DailyRecord, startDate string) []backtest.DailyRecord {
+	var filtered []backtest.DailyRecord
+	startDateFormatted := startDate[:4] + "-" + startDate[4:6] + "-" + startDate[6:8]
+	for _, r := range records {
+		if r.Date >= startDateFormatted {
+			filtered = append(filtered, r)
+		}
+	}
+	return filtered
 }
 
 func generateContractSymbols(product, startDate, endDate string) []string {

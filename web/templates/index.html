@@ -1124,10 +1124,12 @@
         });
 
         const today = new Date();
-        const oneYearAgo = new Date(today);
-        oneYearAgo.setFullYear(today.getFullYear() - 1);
+        const yesterday = new Date(today);
+        yesterday.setDate(today.getDate() - 1);
+        const oneYearAgo = new Date(yesterday);
+        oneYearAgo.setFullYear(yesterday.getFullYear() - 1);
         
-        document.getElementById('endDate').value = today.toISOString().split('T')[0];
+        document.getElementById('endDate').value = yesterday.toISOString().split('T')[0];
         document.getElementById('startDate').value = oneYearAgo.toISOString().split('T')[0];
 
         loadSymbols();

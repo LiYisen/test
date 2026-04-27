@@ -136,6 +136,11 @@ foreach ($file in $baselineFiles) {
             $failCount++
         }
         
+        if ($latestFile) {
+            Remove-Item $latestFile.FullName -Force
+            Write-Host "Cleaned up result file: $($latestFile.Name)" -ForegroundColor Gray
+        }
+        
     } catch {
         Write-Host "[FAIL] Verification error: $_" -ForegroundColor Red
         Write-Host "Details: $($_.Exception.Message)" -ForegroundColor Gray
