@@ -1,0 +1,62 @@
+{
+  "funds": [
+    {
+      "id": "demo_fund",
+      "name": "演示基金",
+      "description": "多品种趋势跟踪策略组合演示",
+      "start_date": "20240101",
+      "end_date": "20241231",
+      "positions": [
+        {
+          "symbol": "RB",
+          "strategy": "yinyang",
+          "weight": "0.5",
+          "params": {
+            "leverage": 3
+          }
+        },
+        {
+          "symbol": "TA",
+          "strategy": "yinyang",
+          "weight": "0.5",
+          "params": {
+            "leverage": 2
+          }
+        }
+      ]
+    },
+    {
+      "id": "fund_001",
+      "name": "太极黑色系",
+      "description": "",
+      "start_date": "",
+      "end_date": "",
+      "positions": [
+        {
+          "symbol": "I",
+          "strategy": "yinyang",
+          "weight": "0.3",
+          "params": {
+            "leverage": 3
+          }
+        },
+        {
+          "symbol": "RB",
+          "strategy": "yinyang",
+          "weight": "0.4",
+          "params": {
+            "leverage": 3
+          }
+        },
+        {
+          "symbol": "JM",
+          "strategy": "yinyang",
+          "weight": "0.3",
+          "params": {
+            "leverage": 3
+          }
+        }
+      ]
+    }
+  ]
+}

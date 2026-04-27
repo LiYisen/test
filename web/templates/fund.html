@@ -1,0 +1,1014 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>基金模式 - 期货回测系统</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: #1a1a2e;
+            color: #e0e0e0;
+            line-height: 1.6;
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        header {
+            background: #16213e;
+            border-bottom: 1px solid #2a2a4a;
+            padding: 20px 0;
+            margin-bottom: 20px;
+        }
+        header .header-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        header h1 {
+            font-size: 1.5em;
+            font-weight: 500;
+            color: #fff;
+        }
+        header p {
+            color: #8892b0;
+            font-size: 0.9em;
+        }
+        .nav-links a {
+            color: #8892b0;
+            text-decoration: none;
+            padding: 8px 16px;
+            border: 1px solid #3a3a5a;
+            border-radius: 4px;
+            font-size: 0.9em;
+            transition: all 0.2s;
+            margin-left: 8px;
+        }
+        .nav-links a:hover {
+            background: #1f2940;
+            color: #fff;
+            border-color: #4a4a6a;
+        }
+        .card {
+            background: #16213e;
+            border: 1px solid #2a2a4a;
+            border-radius: 8px;
+            padding: 24px;
+            margin-bottom: 20px;
+        }
+        .card h2 {
+            color: #fff;
+            margin-bottom: 20px;
+            font-size: 1.1em;
+            font-weight: 500;
+            border-bottom: 1px solid #2a2a4a;
+            padding-bottom: 12px;
+        }
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 16px;
+        }
+        .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+        .form-group label {
+            font-weight: 400;
+            margin-bottom: 6px;
+            color: #8892b0;
+            font-size: 0.9em;
+        }
+        .form-group input, .form-group select {
+            padding: 10px 12px;
+            border: 1px solid #3a3a5a;
+            border-radius: 4px;
+            font-size: 0.95em;
+            background: #1a1a2e;
+            color: #e0e0e0;
+            transition: border-color 0.2s;
+        }
+        .form-group input:focus, .form-group select:focus {
+            outline: none;
+            border-color: #5a5a8a;
+        }
+        .btn {
+            background: #1f2940;
+            color: #e0e0e0;
+            border: 1px solid #3a3a5a;
+            padding: 12px 32px;
+            font-size: 0.95em;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-weight: 400;
+        }
+        .btn:hover {
+            background: #2a3a5a;
+            border-color: #4a4a7a;
+        }
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        .btn-secondary {
+            padding: 8px 16px;
+            font-size: 0.85em;
+        }
+        .btn-danger {
+            border-color: #5a2a2a;
+            color: #f05050;
+        }
+        .btn-danger:hover {
+            background: #3a1a1a;
+        }
+        .btn-success {
+            border-color: #2a5a2a;
+            color: #50f050;
+        }
+        .btn-success:hover {
+            background: #1a3a1a;
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+        .stat-card {
+            background: #1a1a2e;
+            border: 1px solid #2a2a4a;
+            border-radius: 6px;
+            padding: 16px;
+            text-align: center;
+        }
+        .stat-card .label {
+            color: #8892b0;
+            font-size: 0.85em;
+            margin-bottom: 4px;
+        }
+        .stat-card .value {
+            color: #fff;
+            font-size: 1.2em;
+            font-weight: 500;
+        }
+        .stat-card .value.positive {
+            color: #4ade80;
+        }
+        .stat-card .value.negative {
+            color: #f87171;
+        }
+        .table-container {
+            overflow-x: auto;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.9em;
+        }
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #2a2a4a;
+        }
+        th {
+            background: #1a1a2e;
+            color: #8892b0;
+            font-weight: 500;
+        }
+        tr:hover {
+            background: #1f2940;
+        }
+        .hidden {
+            display: none !important;
+        }
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #8892b0;
+        }
+        .message {
+            padding: 12px 16px;
+            border-radius: 4px;
+            margin-bottom: 16px;
+            font-size: 0.9em;
+        }
+        .message.success {
+            background: #1a3a1a;
+            border: 1px solid #2a5a2a;
+            color: #4ade80;
+        }
+        .message.error {
+            background: #3a1a1a;
+            border: 1px solid #5a2a2a;
+            color: #f87171;
+        }
+        .tabs {
+            display: flex;
+            border-bottom: 1px solid #2a2a4a;
+            margin-bottom: 16px;
+        }
+        .tab {
+            padding: 12px 24px;
+            cursor: pointer;
+            color: #8892b0;
+            border-bottom: 2px solid transparent;
+            transition: all 0.2s;
+        }
+        .tab:hover {
+            color: #e0e0e0;
+        }
+        .tab.active {
+            color: #fff;
+            border-bottom-color: #5a8a5a;
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
+        .chart-container {
+            position: relative;
+            height: 400px;
+            margin-top: 20px;
+        }
+        .position-list {
+            margin-top: 16px;
+        }
+        .position-item {
+            background: #1a1a2e;
+            border: 1px solid #2a2a4a;
+            border-radius: 6px;
+            padding: 16px;
+            margin-bottom: 12px;
+        }
+        .position-item .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+        .position-item .symbol {
+            font-size: 1.1em;
+            font-weight: 500;
+            color: #fff;
+        }
+        .position-item .weight {
+            color: #8892b0;
+            font-size: 0.9em;
+        }
+        .position-item .params {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 8px;
+        }
+        .position-item .param {
+            font-size: 0.85em;
+        }
+        .position-item .param-label {
+            color: #6a6a8a;
+        }
+        .position-item .param-value {
+            color: #e0e0e0;
+        }
+        .fund-card {
+            background: #1a1a2e;
+            border: 1px solid #2a2a4a;
+            border-radius: 6px;
+            padding: 16px;
+            margin-bottom: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .fund-card:hover {
+            border-color: #4a4a6a;
+        }
+        .fund-card.selected {
+            border-color: #5a8a5a;
+            background: #1a2a1a;
+        }
+        .fund-card .fund-name {
+            font-size: 1.1em;
+            font-weight: 500;
+            color: #fff;
+            margin-bottom: 4px;
+        }
+        .fund-card .fund-desc {
+            color: #8892b0;
+            font-size: 0.85em;
+            margin-bottom: 8px;
+        }
+        .fund-card .fund-meta {
+            display: flex;
+            gap: 16px;
+            font-size: 0.85em;
+            color: #6a6a8a;
+        }
+        .add-position-form {
+            background: #1a1a2e;
+            border: 1px solid #2a2a4a;
+            border-radius: 6px;
+            padding: 16px;
+            margin-top: 16px;
+        }
+        .add-position-form h4 {
+            color: #fff;
+            margin-bottom: 12px;
+            font-size: 0.95em;
+        }
+        .weight-warning {
+            color: #f87171;
+            font-size: 0.85em;
+            margin-top: 8px;
+        }
+        .weight-ok {
+            color: #4ade80;
+            font-size: 0.85em;
+            margin-top: 8px;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="header-content">
+            <div>
+                <h1>基金模式</h1>
+                <p>多品种组合回测，支持自定义配置</p>
+            </div>
+            <div class="nav-links">
+                <a href="/">单品种回测</a>
+                <a href="/portfolio">组合分析</a>
+            </div>
+        </div>
+    </header>
+
+    <div class="container">
+        <div class="tabs">
+            <div class="tab active" data-tab="backtest">基金回测</div>
+            <div class="tab" data-tab="results">回测结果</div>
+            <div class="tab" data-tab="config">基金配置</div>
+        </div>
+
+        <div class="tab-content active" id="tab-backtest">
+            <div class="card">
+                <h2>选择基金</h2>
+                <div id="fundList" class="loading">加载中...</div>
+            </div>
+
+            <div class="card hidden" id="backtestConfigCard">
+                <h2>回测配置</h2>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>开始日期</label>
+                        <input type="date" id="startDate" required>
+                    </div>
+                    <div class="form-group">
+                        <label>结束日期</label>
+                        <input type="date" id="endDate" required>
+                    </div>
+                </div>
+                <div style="margin-top: 20px; text-align: center;">
+                    <button type="button" class="btn" id="runBtn" onclick="runBacktest()">运行回测</button>
+                </div>
+            </div>
+
+            <div id="message"></div>
+
+            <div class="card hidden" id="statsCard">
+                <h2>回测结果统计</h2>
+                <div class="stats-grid" id="statsGrid"></div>
+            </div>
+
+            <div class="card hidden" id="chartsCard">
+                <h2>图表分析</h2>
+                <div class="chart-container">
+                    <canvas id="equityChart"></canvas>
+                </div>
+            </div>
+
+            <div class="card hidden" id="positionsCard">
+                <h2>品种表现</h2>
+                <div class="table-container">
+                    <table id="positionsTable">
+                        <thead>
+                            <tr>
+                                <th>品种</th>
+                                <th>策略</th>
+                                <th>权重</th>
+                                <th>总收益</th>
+                                <th>胜率</th>
+                                <th>交易天数</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="tab-content" id="tab-results">
+            <div class="card">
+                <h2>基金回测结果</h2>
+                <div id="resultsList" class="loading">加载中...</div>
+            </div>
+        </div>
+
+        <div class="tab-content" id="tab-config">
+            <div class="card">
+                <h2>创建新基金</h2>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>基金ID</label>
+                        <input type="text" id="newFundId" placeholder="如: fund_001">
+                    </div>
+                    <div class="form-group">
+                        <label>基金名称</label>
+                        <input type="text" id="newFundName" placeholder="如: 趋势跟踪基金">
+                    </div>
+                    <div class="form-group">
+                        <label>描述</label>
+                        <input type="text" id="newFundDesc" placeholder="基金策略描述">
+                    </div>
+                    <div class="form-group">
+                        <label>默认开始日期</label>
+                        <input type="date" id="newFundStartDate">
+                    </div>
+                    <div class="form-group">
+                        <label>默认结束日期</label>
+                        <input type="date" id="newFundEndDate">
+                    </div>
+                </div>
+
+                <h3 style="color: #fff; margin: 20px 0 12px; font-size: 1em;">持仓品种配置</h3>
+                <div id="positionList"></div>
+                
+                <div id="weightStatus" class="weight-warning">权重总和需为 1.00</div>
+
+                <div class="add-position-form">
+                    <h4>添加品种</h4>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label>品种代码</label>
+                            <select id="addSymbol"></select>
+                        </div>
+                        <div class="form-group">
+                            <label>策略</label>
+                            <select id="addStrategy"></select>
+                        </div>
+                        <div class="form-group">
+                            <label>权重</label>
+                            <input type="number" id="addWeight" value="0.1" step="0.1" min="0" max="1">
+                        </div>
+                    </div>
+                    <div id="positionParams"></div>
+                    <div style="margin-top: 12px;">
+                        <button type="button" class="btn btn-secondary btn-success" onclick="addPosition()">添加品种</button>
+                    </div>
+                </div>
+
+                <div style="margin-top: 20px; text-align: center;">
+                    <button type="button" class="btn" onclick="createFund()">创建基金</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let funds = [];
+        let selectedFund = null;
+        let symbols = [];
+        let strategies = [];
+        let positions = [];
+        let equityChart = null;
+
+        document.addEventListener('DOMContentLoaded', function() {
+            initTabs();
+            loadFunds();
+            loadSymbols();
+            loadStrategies();
+        });
+
+        function initTabs() {
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.addEventListener('click', function() {
+                    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                    this.classList.add('active');
+                    document.getElementById('tab-' + this.dataset.tab).classList.add('active');
+                    
+                    if (this.dataset.tab === 'results') {
+                        loadResults();
+                    }
+                });
+            });
+        }
+
+        async function loadFunds() {
+            try {
+                const response = await fetch('/api/funds');
+                const data = await response.json();
+                funds = data.funds || [];
+                renderFundList();
+            } catch (error) {
+                document.getElementById('fundList').innerHTML = '<p class="message error">加载基金列表失败: ' + error.message + '</p>';
+            }
+        }
+
+        function renderFundList() {
+            const container = document.getElementById('fundList');
+            if (funds.length === 0) {
+                container.innerHTML = '<p style="color: #8892b0; text-align: center; padding: 20px;">暂无基金配置，请先创建基金</p>';
+                return;
+            }
+
+            container.innerHTML = funds.map(fund => `
+                <div class="fund-card ${selectedFund && selectedFund.id === fund.id ? 'selected' : ''}" onclick="selectFund('${fund.id}')">
+                    <div class="fund-name">${fund.name}</div>
+                    <div class="fund-desc">${fund.description || '无描述'}</div>
+                    <div class="fund-meta">
+                        <span>ID: ${fund.id}</span>
+                        <span>品种数: ${fund.positions ? fund.positions.length : 0}</span>
+                        <span>区间: ${formatDateForDisplay(fund.start_date)} ~ ${formatDateForDisplay(fund.end_date)}</span>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function selectFund(fundId) {
+            selectedFund = funds.find(f => f.id === fundId);
+            renderFundList();
+            
+            document.getElementById('backtestConfigCard').classList.remove('hidden');
+            
+            if (selectedFund) {
+                document.getElementById('startDate').value = formatDateForInput(selectedFund.start_date);
+                document.getElementById('endDate').value = formatDateForInput(selectedFund.end_date);
+            }
+        }
+
+        function formatDateForInput(dateStr) {
+            if (dateStr.length === 8) {
+                return dateStr.slice(0, 4) + '-' + dateStr.slice(4, 6) + '-' + dateStr.slice(6, 8);
+            }
+            return dateStr;
+        }
+
+        function formatDateForApi(dateStr) {
+            return dateStr.replace(/-/g, '');
+        }
+
+        function formatDateForDisplay(dateStr) {
+            if (!dateStr) return '';
+            if (dateStr.length === 8) {
+                return dateStr.slice(0, 4) + '-' + dateStr.slice(4, 6) + '-' + dateStr.slice(6, 8);
+            }
+            return dateStr;
+        }
+
+        async function loadSymbols() {
+            try {
+                const response = await fetch('/api/symbols');
+                const data = await response.json();
+                symbols = data.symbols || [];
+                const select = document.getElementById('addSymbol');
+                select.innerHTML = symbols.map(s => `<option value="${s.code}">${s.code} - ${s.name}</option>`).join('');
+            } catch (error) {
+                console.error('加载品种列表失败:', error);
+            }
+        }
+
+        async function loadStrategies() {
+            try {
+                const response = await fetch('/api/strategies');
+                const data = await response.json();
+                strategies = data.strategies || [];
+                const select = document.getElementById('addStrategy');
+                select.innerHTML = strategies.map(s => `<option value="${s.name}">${s.display_name}</option>`).join('');
+                updatePositionParams();
+                select.addEventListener('change', updatePositionParams);
+            } catch (error) {
+                console.error('加载策略列表失败:', error);
+            }
+        }
+
+        function updatePositionParams() {
+            const strategyName = document.getElementById('addStrategy').value;
+            const strategy = strategies.find(s => s.name === strategyName);
+            const container = document.getElementById('positionParams');
+            
+            if (!strategy || !strategy.params || strategy.params.length === 0) {
+                container.innerHTML = '';
+                return;
+            }
+
+            container.innerHTML = '<div class="form-grid" style="margin-top: 12px;">' + 
+                strategy.params.map(p => `
+                    <div class="form-group">
+                        <label>${p.display_name}</label>
+                        <input type="number" id="param_${p.name}" value="${p.default}" step="0.1" min="${p.min}" max="${p.max}">
+                        <small>${p.description}</small>
+                    </div>
+                `).join('') + '</div>';
+        }
+
+        function addPosition() {
+            const symbol = document.getElementById('addSymbol').value;
+            const strategy = document.getElementById('addStrategy').value;
+            const weight = parseFloat(document.getElementById('addWeight').value);
+
+            const strategyConfig = strategies.find(s => s.name === strategy);
+            const params = {};
+            if (strategyConfig && strategyConfig.params) {
+                strategyConfig.params.forEach(p => {
+                    const input = document.getElementById('param_' + p.name);
+                    if (input) {
+                        params[p.name] = parseFloat(input.value);
+                    }
+                });
+            }
+
+            positions.push({ symbol, strategy, weight, params });
+            renderPositions();
+            updateWeightStatus();
+        }
+
+        function removePosition(index) {
+            positions.splice(index, 1);
+            renderPositions();
+            updateWeightStatus();
+        }
+
+        function renderPositions() {
+            const container = document.getElementById('positionList');
+            if (positions.length === 0) {
+                container.innerHTML = '<p style="color: #6a6a8a; text-align: center; padding: 20px;">暂无持仓品种</p>';
+                return;
+            }
+
+            container.innerHTML = positions.map((pos, index) => `
+                <div class="position-item">
+                    <div class="header">
+                        <span class="symbol">${pos.symbol}</span>
+                        <span class="weight">权重: ${(pos.weight * 100).toFixed(1)}%</span>
+                        <button class="btn btn-secondary btn-danger" onclick="removePosition(${index})">删除</button>
+                    </div>
+                    <div class="params">
+                        <div class="param">
+                            <span class="param-label">策略: </span>
+                            <span class="param-value">${pos.strategy}</span>
+                        </div>
+                        ${Object.entries(pos.params).map(([k, v]) => `
+                            <div class="param">
+                                <span class="param-label">${k}: </span>
+                                <span class="param-value">${v}</span>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function updateWeightStatus() {
+            const total = positions.reduce((sum, p) => sum + p.weight, 0);
+            const status = document.getElementById('weightStatus');
+            if (Math.abs(total - 1) < 0.001) {
+                status.className = 'weight-ok';
+                status.textContent = `权重总和: ${total.toFixed(2)} ✓`;
+            } else {
+                status.className = 'weight-warning';
+                status.textContent = `权重总和: ${total.toFixed(2)} (需为 1.00)`;
+            }
+        }
+
+        async function createFund() {
+            const id = document.getElementById('newFundId').value.trim();
+            const name = document.getElementById('newFundName').value.trim();
+            const description = document.getElementById('newFundDesc').value.trim();
+            const startDate = formatDateForApi(document.getElementById('newFundStartDate').value);
+            const endDate = formatDateForApi(document.getElementById('newFundEndDate').value);
+
+            if (!id || !name) {
+                showMessage('请填写基金ID和名称', 'error');
+                return;
+            }
+
+            if (positions.length === 0) {
+                showMessage('请至少添加一个持仓品种', 'error');
+                return;
+            }
+
+            const total = positions.reduce((sum, p) => sum + p.weight, 0);
+            if (Math.abs(total - 1) > 0.001) {
+                showMessage('权重总和必须为1', 'error');
+                return;
+            }
+
+            const fund = {
+                id,
+                name,
+                description,
+                start_date: startDate,
+                end_date: endDate,
+                positions: positions
+            };
+
+            try {
+                const response = await fetch('/api/funds', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(fund)
+                });
+                const data = await response.json();
+                
+                if (data.error) {
+                    showMessage(data.error, 'error');
+                } else {
+                    showMessage('基金创建成功', 'success');
+                    positions = [];
+                    renderPositions();
+                    updateWeightStatus();
+                    loadFunds();
+                }
+            } catch (error) {
+                showMessage('创建失败: ' + error.message, 'error');
+            }
+        }
+
+        async function runBacktest() {
+            if (!selectedFund) {
+                showMessage('请先选择一个基金', 'error');
+                return;
+            }
+
+            const btn = document.getElementById('runBtn');
+            btn.disabled = true;
+            btn.textContent = '运行中...';
+            document.getElementById('message').innerHTML = '<div class="loading">正在执行回测...</div>';
+
+            try {
+                const response = await fetch('/api/funds/backtest', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        fund_id: selectedFund.id,
+                        start_date: formatDateForApi(document.getElementById('startDate').value),
+                        end_date: formatDateForApi(document.getElementById('endDate').value)
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.error) {
+                    showMessage(data.error, 'error');
+                } else {
+                    showMessage('回测完成', 'success');
+                    displayResult(data);
+                }
+            } catch (error) {
+                showMessage('回测失败: ' + error.message, 'error');
+            }
+
+            btn.disabled = false;
+            btn.textContent = '运行回测';
+        }
+
+        function displayResult(data) {
+            document.getElementById('statsCard').classList.remove('hidden');
+            document.getElementById('chartsCard').classList.remove('hidden');
+
+            const stats = data.statistics || {};
+            document.getElementById('statsGrid').innerHTML = `
+                <div class="stat-card">
+                    <div class="label">总收益率</div>
+                    <div class="value ${(parseFloat(stats.total_return) >= 0 ? 'positive' : 'negative')}">${(parseFloat(stats.total_return) * 100).toFixed(2)}%</div>
+                </div>
+                <div class="stat-card">
+                    <div class="label">年化收益</div>
+                    <div class="value ${(parseFloat(stats.annual_return) >= 0 ? 'positive' : 'negative')}">${(parseFloat(stats.annual_return) * 100).toFixed(2)}%</div>
+                </div>
+                <div class="stat-card">
+                    <div class="label">最大回撤</div>
+                    <div class="value negative">${(parseFloat(stats.max_drawdown_ratio) * 100).toFixed(2)}%</div>
+                </div>
+                <div class="stat-card">
+                    <div class="label">夏普比率</div>
+                    <div class="value">${parseFloat(stats.sharpe_ratio).toFixed(2)}</div>
+                </div>
+                <div class="stat-card">
+                    <div class="label">卡玛比率</div>
+                    <div class="value">${parseFloat(stats.calmar_ratio).toFixed(2)}</div>
+                </div>
+                <div class="stat-card">
+                    <div class="label">胜率</div>
+                    <div class="value">${(parseFloat(stats.win_rate) * 100).toFixed(1)}%</div>
+                </div>
+                <div class="stat-card">
+                    <div class="label">交易天数</div>
+                    <div class="value">${stats.trading_days}</div>
+                </div>
+                <div class="stat-card">
+                    <div class="label">总交易次数</div>
+                    <div class="value">${stats.total_trades}</div>
+                </div>
+            `;
+
+            loadResultDetails(data.id, data.fund_id);
+        }
+
+        async function loadResultDetails(resultId, fundId) {
+            try {
+                const response = await fetch(`/api/funds/results/${fundId}/${resultId}`);
+                const data = await response.json();
+                
+                if (data.daily_records) {
+                    renderEquityChart(data.daily_records);
+                }
+                
+                if (data.position_results) {
+                    renderPositionsTable(data.position_results);
+                }
+            } catch (error) {
+                console.error('加载结果详情失败:', error);
+            }
+        }
+
+        function renderEquityChart(records) {
+            const ctx = document.getElementById('equityChart').getContext('2d');
+            
+            if (equityChart) {
+                equityChart.destroy();
+            }
+
+            const labels = records.map(r => r.date);
+            const values = records.map(r => parseFloat(r.total_value));
+            const drawdowns = [];
+            let peak = values[0];
+            values.forEach(v => {
+                if (v > peak) peak = v;
+                drawdowns.push((peak - v) / peak * 100);
+            });
+
+            equityChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: '基金净值',
+                            data: values,
+                            borderColor: '#4ade80',
+                            backgroundColor: 'rgba(74, 222, 128, 0.1)',
+                            fill: true,
+                            tension: 0.1,
+                            yAxisID: 'y'
+                        },
+                        {
+                            label: '回撤',
+                            data: drawdowns,
+                            borderColor: '#f87171',
+                            backgroundColor: 'rgba(248, 113, 113, 0.1)',
+                            fill: true,
+                            tension: 0.1,
+                            yAxisID: 'y1'
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        intersect: false,
+                        mode: 'index'
+                    },
+                    plugins: {
+                        legend: {
+                            labels: { color: '#8892b0' }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            ticks: { color: '#6a6a8a' },
+                            grid: { color: '#2a2a4a' }
+                        },
+                        y: {
+                            type: 'linear',
+                            position: 'left',
+                            ticks: { color: '#6a6a8a' },
+                            grid: { color: '#2a2a4a' }
+                        },
+                        y1: {
+                            type: 'linear',
+                            position: 'right',
+                            ticks: { color: '#6a6a8a', callback: v => v.toFixed(1) + '%' },
+                            grid: { display: false },
+                            max: 0
+                        }
+                    }
+                }
+            });
+        }
+
+        function renderPositionsTable(positionResults) {
+            document.getElementById('positionsCard').classList.remove('hidden');
+            const tbody = document.querySelector('#positionsTable tbody');
+            tbody.innerHTML = Object.entries(positionResults).map(([symbol, data]) => `
+                <tr>
+                    <td>${symbol}</td>
+                    <td>${data.strategy}</td>
+                    <td>${(parseFloat(data.weight) * 100).toFixed(1)}%</td>
+                    <td class="${parseFloat(data.total_return) >= 0 ? 'positive' : 'negative'}">${(parseFloat(data.total_return) * 100).toFixed(2)}%</td>
+                    <td>${(parseFloat(data.win_rate) * 100).toFixed(1)}%</td>
+                    <td>${data.trading_days}</td>
+                </tr>
+            `).join('');
+        }
+
+        async function loadResults() {
+            const container = document.getElementById('resultsList');
+            container.innerHTML = '<div class="loading">加载中...</div>';
+
+            try {
+                const response = await fetch('/api/funds/results');
+                const data = await response.json();
+                const results = data.results || [];
+
+                if (results.length === 0) {
+                    container.innerHTML = '<p style="color: #8892b0; text-align: center; padding: 20px;">暂无回测结果</p>';
+                    return;
+                }
+
+                container.innerHTML = '<div class="table-container"><table><thead><tr><th>基金名称</th><th>时间区间</th><th>操作</th></tr></thead><tbody>' +
+                    results.map(r => `
+                        <tr>
+                            <td>${r.fund_name}</td>
+                            <td>${formatDateForDisplay(r.start_date)} ~ ${formatDateForDisplay(r.end_date)}</td>
+                            <td>
+                                <button class="btn btn-secondary" onclick="viewResult('${r.fund_id}', '${r.id}')">查看</button>
+                                <button class="btn btn-secondary btn-danger" onclick="deleteResult('${r.fund_id}', '${r.id}')">删除</button>
+                            </td>
+                        </tr>
+                    `).join('') + '</tbody></table></div>';
+            } catch (error) {
+                container.innerHTML = '<p class="message error">加载结果列表失败: ' + error.message + '</p>';
+            }
+        }
+
+        async function viewResult(fundId, resultId) {
+            document.querySelector('.tab[data-tab="backtest"]').click();
+            
+            try {
+                const response = await fetch(`/api/funds/results/${fundId}/${resultId}`);
+                const data = await response.json();
+                
+                displayResult({
+                    id: resultId,
+                    fund_id: fundId,
+                    statistics: data.statistics
+                });
+            } catch (error) {
+                showMessage('加载结果失败: ' + error.message, 'error');
+            }
+        }
+
+        async function deleteResult(fundId, resultId) {
+            if (!confirm('确定要删除这个回测结果吗？')) return;
+
+            try {
+                const response = await fetch(`/api/funds/results/${fundId}/${resultId}`, {
+                    method: 'DELETE'
+                });
+                const data = await response.json();
+                
+                if (data.success) {
+                    showMessage('删除成功', 'success');
+                    loadResults();
+                } else {
+                    showMessage(data.error || '删除失败', 'error');
+                }
+            } catch (error) {
+                showMessage('删除失败: ' + error.message, 'error');
+            }
+        }
+
+        function showMessage(text, type) {
+            document.getElementById('message').innerHTML = `<div class="message ${type}">${text}</div>`;
+            setTimeout(() => {
+                document.getElementById('message').innerHTML = '';
+            }, 5000);
+        }
+    </script>
+</body>
+</html>

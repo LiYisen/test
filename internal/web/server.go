@@ -9,6 +9,7 @@ import (
 
 	"futures-backtest/internal/backtest"
 	"futures-backtest/internal/data"
+	"futures-backtest/internal/fund"
 	"futures-backtest/internal/strategy"
 	"futures-backtest/pkg/pyexec"
 
@@ -66,6 +67,10 @@ func (s *Server) setupRoutes() {
 		c.HTML(http.StatusOK, "portfolio.html", nil)
 	})
 
+	s.router.GET("/fund", func(c *gin.Context) {
+		c.HTML(http.StatusOK, "fund.html", nil)
+	})
+
 	api := s.router.Group("/api")
 	{
 		api.GET("/symbols", s.handleGetSymbols)
@@ -76,6 +81,14 @@ func (s *Server) setupRoutes() {
 		api.DELETE("/results/:id", s.handleDeleteResult)
 		api.GET("/results/:id/data", s.handleGetResultData)
 		api.POST("/portfolio", s.handlePortfolioAnalysis)
+
+		api.GET("/funds", s.handleGetFunds)
+		api.GET("/funds/:id", s.handleGetFund)
+		api.POST("/funds", s.handleCreateFund)
+		api.POST("/funds/backtest", s.handleFundBacktest)
+		api.GET("/funds/results", s.handleListFundResults)
+		api.GET("/funds/results/:fund_id/:result_id", s.handleGetFundResult)
+		api.DELETE("/funds/results/:fund_id/:result_id", s.handleDeleteFundResult)
 	}
 }
 
@@ -784,4 +797,189 @@ func generateContractSymbols(product, startDate, endDate string) []string {
 			year++
 		}
 	}
+}
+
+func (s *Server) handleGetFunds(c *gin.Context) {
+	fundConfigPath := filepath.Join("config", "funds.json")
+	if err := fund.LoadFundConfig(fundConfigPath); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "加载基金配置失败: " + err.Error()})
+		return
+	}
+
+	funds, err := fund.GetAllFundConfigs()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"funds": funds})
+}
+
+func (s *Server) handleGetFund(c *gin.Context) {
+	fundID := c.Param("id")
+
+	fundConfigPath := filepath.Join("config", "funds.json")
+	if err := fund.LoadFundConfig(fundConfigPath); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "加载基金配置失败: " + err.Error()})
+		return
+	}
+
+	fundConfig, err := fund.GetFundConfig(fundID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"fund": fundConfig})
+}
+
+func (s *Server) handleCreateFund(c *gin.Context) {
+	var fundConfig fund.FundConfig
+	if err := c.ShouldBindJSON(&fundConfig); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	if err := fund.ValidateFundConfig(&fundConfig); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	fundConfigPath := filepath.Join("config", "funds.json")
+	if err := fund.SaveFundConfig(fundConfigPath, &fundConfig); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "保存基金配置失败: " + err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"success": true, "fund": fundConfig})
+}
+
+func (s *Server) handleFundBacktest(c *gin.Context) {
+	var req fund.FundBacktestRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	fundConfigPath := filepath.Join("config", "funds.json")
+	if err := fund.LoadFundConfig(fundConfigPath); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "加载基金配置失败: " + err.Error()})
+		return
+	}
+
+	fundConfig, err := fund.GetFundConfig(req.FundID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		return
+	}
+
+	engine := fund.NewFundEngine(s.dataManager)
+	result, err := engine.RunBacktest(*fundConfig, req.StartDate, req.EndDate)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	if err := fund.SaveFundResult(result, s.retDir); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "保存结果失败: " + err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success":      true,
+		"id":           result.ID,
+		"fund_id":      result.FundID,
+		"fund_name":    result.FundName,
+		"trading_days": result.Statistics.TradingDays,
+		"statistics":   convertFundStatistics(result.Statistics),
+	})
+}
+
+func (s *Server) handleListFundResults(c *gin.Context) {
+	results, err := fund.ListFundResults(s.retDir)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"results": results})
+}
+
+func (s *Server) handleGetFundResult(c *gin.Context) {
+	fundID := c.Param("fund_id")
+	resultID := c.Param("result_id")
+
+	result, err := fund.LoadFundResult(s.retDir, fundID, resultID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		return
+	}
+
+	positionSummaries := make(map[string]interface{})
+	for symbol, pos := range result.PositionResults {
+		positionSummaries[symbol] = map[string]interface{}{
+			"strategy":     pos.Strategy,
+			"weight":       pos.Weight.StringFixed(4),
+			"total_return": pos.Statistics.TotalReturn.StringFixed(4),
+			"win_rate":     pos.Statistics.WinRate.StringFixed(4),
+			"trading_days": pos.Statistics.TradingDays,
+		}
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"id":               result.ID,
+		"fund_id":          result.FundID,
+		"fund_name":        result.FundName,
+		"start_date":       result.StartDate,
+		"end_date":         result.EndDate,
+		"statistics":       convertFundStatistics(result.Statistics),
+		"daily_records":    convertFundDailyRecords(result.DailyRecords),
+		"position_results": positionSummaries,
+	})
+}
+
+func (s *Server) handleDeleteFundResult(c *gin.Context) {
+	fundID := c.Param("fund_id")
+	resultID := c.Param("result_id")
+
+	if err := fund.DeleteFundResult(s.retDir, fundID, resultID); err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"success": true, "message": "删除成功"})
+}
+
+func convertFundStatistics(stats fund.FundStatistics) map[string]interface{} {
+	return map[string]interface{}{
+		"total_return":       stats.TotalReturn.StringFixed(4),
+		"annual_return":      stats.AnnualReturn.StringFixed(4),
+		"max_drawdown":       stats.MaxDrawdown.StringFixed(4),
+		"max_drawdown_ratio": stats.MaxDrawdownRatio.StringFixed(4),
+		"sharpe_ratio":       stats.SharpeRatio.StringFixed(4),
+		"calmar_ratio":       stats.CalmarRatio.StringFixed(4),
+		"win_rate":           stats.WinRate.StringFixed(4),
+		"trading_days":       stats.TradingDays,
+		"winning_trades":     stats.WinningTrades,
+		"losing_trades":      stats.LosingTrades,
+		"total_trades":       stats.TotalTrades,
+	}
+}
+
+func convertFundDailyRecords(records []fund.FundDailyRecord) []map[string]interface{} {
+	result := make([]map[string]interface{}, len(records))
+	for i, r := range records {
+		components := make(map[string]string)
+		for k, v := range r.Components {
+			components[k] = v.StringFixed(4)
+		}
+		result[i] = map[string]interface{}{
+			"date":         r.Date,
+			"total_value":  r.TotalValue.StringFixed(4),
+			"daily_return": r.DailyReturn.StringFixed(6),
+			"pnl":          r.PnL.StringFixed(4),
+			"components":   components,
+		}
+	}
+	return result
 }
