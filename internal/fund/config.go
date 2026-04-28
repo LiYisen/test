@@ -26,7 +26,10 @@ func LoadFundConfig(configPath string) error {
 		file, err := os.Open(configPath)
 		if err != nil {
 			if os.IsNotExist(err) {
+				configMu.Lock()
 				fundConfigs = make(map[string]*FundConfig)
+				configMu.Unlock()
+				configErr = nil
 				return
 			}
 			configErr = fmt.Errorf("打开基金配置文件失败: %w", err)
@@ -40,11 +43,15 @@ func LoadFundConfig(configPath string) error {
 			return
 		}
 
-		fundConfigs = make(map[string]*FundConfig)
+		configs := make(map[string]*FundConfig)
 		for i := range configFile.Funds {
 			fund := &configFile.Funds[i]
-			fundConfigs[fund.ID] = fund
+			configs[fund.ID] = fund
 		}
+
+		configMu.Lock()
+		fundConfigs = configs
+		configMu.Unlock()
 	})
 	return configErr
 }

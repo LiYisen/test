@@ -8,8 +8,7 @@ import (
 )
 
 func SaveFundResult(result *FundResult, baseDir string) error {
-	fundDir := filepath.Join(baseDir, "funding", result.FundID,
-		fmt.Sprintf("%s_%s_%d", result.StartDate, result.EndDate, result.Timestamp))
+	fundDir := filepath.Join(baseDir, "funding", result.FundID, result.ID)
 
 	if err := os.MkdirAll(fundDir, 0755); err != nil {
 		return fmt.Errorf("创建基金结果目录失败: %w", err)
@@ -68,29 +67,8 @@ func SaveFundResult(result *FundResult, baseDir string) error {
 func LoadFundResult(baseDir, fundID, resultID string) (*FundResult, error) {
 	fundingDir := filepath.Join(baseDir, "funding", fundID)
 
-	entries, err := os.ReadDir(fundingDir)
-	if err != nil {
-		return nil, fmt.Errorf("读取基金目录失败: %w", err)
-	}
-
-	var targetDir string
-	for _, entry := range entries {
-		if entry.IsDir() && entry.Name() == resultID {
-			targetDir = filepath.Join(fundingDir, entry.Name())
-			break
-		}
-	}
-
-	if targetDir == "" {
-		for _, entry := range entries {
-			if entry.IsDir() && len(entry.Name()) >= len(resultID) && entry.Name()[:len(resultID)] == resultID {
-				targetDir = filepath.Join(fundingDir, entry.Name())
-				break
-			}
-		}
-	}
-
-	if targetDir == "" {
+	targetDir := filepath.Join(fundingDir, resultID)
+	if _, err := os.Stat(targetDir); os.IsNotExist(err) {
 		return nil, fmt.Errorf("未找到基金结果: %s/%s", fundID, resultID)
 	}
 
@@ -186,22 +164,9 @@ func ListFundResults(baseDir string) ([]map[string]interface{}, error) {
 }
 
 func DeleteFundResult(baseDir, fundID, resultID string) error {
-	fundingDir := filepath.Join(baseDir, "funding", fundID)
+	targetDir := filepath.Join(baseDir, "funding", fundID, resultID)
 
-	entries, err := os.ReadDir(fundingDir)
-	if err != nil {
-		return fmt.Errorf("读取基金目录失败: %w", err)
-	}
-
-	var targetDir string
-	for _, entry := range entries {
-		if entry.IsDir() && entry.Name() == resultID {
-			targetDir = filepath.Join(fundingDir, entry.Name())
-			break
-		}
-	}
-
-	if targetDir == "" {
+	if _, err := os.Stat(targetDir); os.IsNotExist(err) {
 		return fmt.Errorf("未找到基金结果: %s/%s", fundID, resultID)
 	}
 

@@ -2,6 +2,7 @@ package fund
 
 import (
 	"fmt"
+	"log"
 	"math"
 	"sort"
 	"sync"
@@ -35,6 +36,7 @@ type positionBacktestResult struct {
 }
 
 func (e *FundEngine) RunBacktest(config FundConfig, startDate, endDate string) (*FundResult, error) {
+	log.Printf("[基金] RunBacktest开始: fund=%s, start=%s, end=%s", config.Name, startDate, endDate)
 	if err := ValidateFundConfig(&config); err != nil {
 		return nil, fmt.Errorf("配置验证失败: %w", err)
 	}
@@ -105,6 +107,7 @@ func (e *FundEngine) RunBacktest(config FundConfig, startDate, endDate string) (
 }
 
 func (e *FundEngine) runPositionBacktest(posConfig PositionConfig, startDate, endDate string) *positionBacktestResult {
+	log.Printf("[基金] 开始品种回测: %s/%s", posConfig.Symbol, posConfig.Strategy)
 	result := &positionBacktestResult{
 		Symbol:   posConfig.Symbol,
 		Strategy: posConfig.Strategy,

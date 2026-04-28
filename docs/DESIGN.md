@@ -40,6 +40,11 @@ d:\code\local\test\
 │   ├── data/                   # 数据管理
 │   │   ├── futures_data.go     # 期货数据获取
 │   │   └── dominant.go         # 主力合约识别
+│   ├── fund/                   # 基金模式
+│   │   ├── types.go            # 基金类型定义
+│   │   ├── config.go           # 基金配置管理
+│   │   ├── engine.go           # 基金回测引擎
+│   │   └── storage.go          # 基金结果存储
 │   ├── strategy/               # 策略层
 │   │   ├── interface.go        # 策略接口定义
 │   │   ├── factory.go          # 策略工厂与注册
@@ -55,7 +60,7 @@ d:\code\local\test\
 │   │       ├── adapter.go      # 策略适配器
 │   │       └── rollover.go     # 移仓换月
 │   └── web/                    # Web服务
-│       ├── server.go           # HTTP服务器
+│       ├── server.go           # HTTP服务器与路由
 │       ├── config.go           # 配置加载
 │       ├── storage.go          # 结果存储
 │       └── portfolio.go        # 组合分析
@@ -395,9 +400,122 @@ type PositionReturn struct {
 |------|------|------|
 | POST | /api/portfolio | 执行组合分析 |
 
-## 10. 关键算法
+## 10. 基金模式架构
 
-### 10.1 K线处理时序
+### 10.1 概述
+
+基金模式支持将多个品种按照指定权重组合为一个基金进行回测。基金回测基于净值计算，不依赖初始资金。
+
+### 10.2 核心模块
+
+**位置**: `internal/fund/`
+
+| 文件 | 职责 |
+|------|------|
+| types.go | 基金配置、回测结果、统计指标等类型定义 |
+| config.go | 基金配置的加载、保存、查询，使用 `sync.Once` 保证线程安全 |
+| engine.go | 基金回测引擎，并发执行品种回测并合并结果 |
+| storage.go | 基金回测结果的文件存储与加载 |
+
+### 10.3 数据流
+
+```
+FundConfig → [FundEngine.RunBacktest] → FundResult
+                    │
+                    ├── 并发执行各品种回测（通过 channel 收集结果）
+                    ├── 按权重加权合并各品种净值
+                    └── 计算基金整体统计指标
+```
+
+### 10.4 基金配置结构
+
+```go
+type FundConfig struct {
+    ID          string           `json:"id"`
+    Name        string           `json:"name"`
+    Description string           `json:"description"`
+    StartDate   string           `json:"start_date"`
+    EndDate     string           `json:"end_date"`
+    Positions   []FundPosition   `json:"positions"`
+}
+
+type FundPosition struct {
+    Symbol   string                 `json:"symbol"`
+    Strategy string                 `json:"strategy"`
+    Weight   decimal.Decimal        `json:"weight"`
+    Params   map[string]interface{} `json:"params"`
+}
+```
+
+### 10.5 结果存储结构
+
+```
+ret/
+├── funding/                        # 基金回测结果（独立目录）
+│   └── {fund_id}/                  # 按基金ID分组
+│       └── {result_id}/            # 按回测结果ID分组
+│           ├── fund_result.json    # 基金整体结果
+│           └── positions/          # 各品种详细结果
+│               ├── {symbol1}.json
+│               └── {symbol2}.json
+├── {backtest_id}.json              # 单品种回测结果
+└── ...
+```
+
+### 10.6 并发安全
+
+- 品种回测使用 goroutine 并发执行，结果通过 buffered channel 收集。
+- 基金配置加载使用 `sync.Once` 确保只加载一次。
+- 配置读写使用 `sync.RWMutex` 保护。
+- 年化收益计算使用 `decimal.Decimal.Pow` 避免浮点精度问题。
+
+## 11. Web前端架构
+
+### 11.1 单页应用（SPA）
+
+系统前端采用 SPA 架构，所有功能模块集成在 `web/templates/index.html` 中。
+
+### 11.2 页面结构
+
+```
+┌──────────────────────────────────────────────┐
+│ 侧边栏 (固定)  │  内容区域                    │
+│ ┌────────────┐ │ ┌──────────────────────────┐ │
+│ │ FT 期货回测 │ │ │ 页面标题 + 描述          │ │
+│ ├────────────┤ │ ├──────────────────────────┤ │
+│ │ ▶ 回测     │ │ │                          │ │
+│ │   组合分析 │ │ │  功能卡片区域             │ │
+│ │   基金     │ │ │  (表单/图表/表格)         │ │
+│ ├────────────┤ │ │                          │ │
+│ │ ▶ 收起     │ │ │                          │ │
+│ └────────────┘ │ └──────────────────────────┘ │
+└──────────────────────────────────────────────┘
+```
+
+### 11.3 导航切换
+
+- 点击导航栏选项时，通过 `switchPage()` 函数切换显示对应的 `page-section`。
+- 使用 CSS `display: none/block` 控制页面区域可见性。
+- 切换时自动触发目标模块的数据加载（如组合分析加载结果列表，基金加载基金列表）。
+
+### 11.4 技术栈
+
+- **Chart.js 4.x**: 图表渲染（资金曲线、回撤、日收益、品种对比）
+- **Fetch API**: 与后端 REST API 通信
+- **CSS Custom Properties**: 主题色彩系统（深色主题）
+- **CSS Grid/Flexbox**: 响应式布局
+
+### 11.5 图表配置
+
+所有图表使用双Y轴配置：
+- 左Y轴：净值/资金曲线
+- 右Y轴：回撤百分比（无 `max: 0` 限制，允许正方向显示回撤值）
+
+API 返回的数值为字符串格式（如 `"0.2195"`），前端使用 `safeParseFloat()` 函数安全解析。
+
+## 12. 关键算法
+
+### 12.1 K线处理时序
 
 ```
 处理K线T时：
@@ -412,7 +530,7 @@ type PositionReturn struct {
 - 使用T+1日的数据影响T日的决策
 - 在移仓检测日立即执行移仓
 
-### 10.2 移仓换月延迟执行
+### 12.2 移仓换月延迟执行
 
 ```
 T日收盘后：
@@ -427,4 +545,4 @@ T+1日开盘：
 
 ---
 
-**最后更新**: 2026-04-24
+**最后更新**: 2026-04-28

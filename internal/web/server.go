@@ -2,6 +2,7 @@ package web
 
 import (
 	"fmt"
+	"log"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -64,11 +65,11 @@ func (s *Server) setupRoutes() {
 	})
 
 	s.router.GET("/portfolio", func(c *gin.Context) {
-		c.HTML(http.StatusOK, "portfolio.html", nil)
+		c.HTML(http.StatusOK, "index.html", nil)
 	})
 
 	s.router.GET("/fund", func(c *gin.Context) {
-		c.HTML(http.StatusOK, "fund.html", nil)
+		c.HTML(http.StatusOK, "index.html", nil)
 	})
 
 	api := s.router.Group("/api")
@@ -857,33 +858,46 @@ func (s *Server) handleCreateFund(c *gin.Context) {
 func (s *Server) handleFundBacktest(c *gin.Context) {
 	var req fund.FundBacktestRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
+		log.Printf("[基金回测] 请求解析失败: %v", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
+	log.Printf("[基金回测] 开始: fund_id=%s, start=%s, end=%s", req.FundID, req.StartDate, req.EndDate)
+
 	fundConfigPath := filepath.Join("config", "funds.json")
 	if err := fund.LoadFundConfig(fundConfigPath); err != nil {
+		log.Printf("[基金回测] 加载配置失败: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "加载基金配置失败: " + err.Error()})
 		return
 	}
 
 	fundConfig, err := fund.GetFundConfig(req.FundID)
 	if err != nil {
+		log.Printf("[基金回测] 获取配置失败: %v", err)
 		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
 		return
 	}
 
+	log.Printf("[基金回测] 配置OK: %s, 品种数=%d", fundConfig.Name, len(fundConfig.Positions))
+
 	engine := fund.NewFundEngine(s.dataManager)
 	result, err := engine.RunBacktest(*fundConfig, req.StartDate, req.EndDate)
 	if err != nil {
+		log.Printf("[基金回测] 执行失败: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
+	log.Printf("[基金回测] 执行成功: 交易天数=%d, resultID=%s", result.Statistics.TradingDays, result.ID)
+
 	if err := fund.SaveFundResult(result, s.retDir); err != nil {
+		log.Printf("[基金回测] 保存失败: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "保存结果失败: " + err.Error()})
 		return
 	}
+
+	log.Printf("[基金回测] 保存成功")
 
 	c.JSON(http.StatusOK, gin.H{
 		"success":      true,
