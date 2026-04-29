@@ -8,13 +8,14 @@
 K线数据 → [信号层] → TradeSignal[] → [资金层] → DailyRecord[] / TradeRecord[]
 ```
 
-技术栈: Go 1.21+ / Python 3.x + akshare / Gin / SPA (HTML + JS + Chart.js)
+技术栈: Go 1.21+ / Python 3.x + akshare / Gin / SQLite (modernc.org/sqlite) / SPA (HTML + JS + Chart.js)
 
 ## 核心架构
 
 - **信号层** (`internal/strategy/`): 生成交易信号，不涉及资金。已注册策略：yinyang（阴阳线突破）、ma（双均线交叉）
 - **资金层** (`internal/backtest/portfolio.go`): 接收信号，计算保证金、盈亏、资金曲线
-- **基金引擎** (`internal/fund/`): 多品种组合回测，基于净值计算，并发执行，配置在 `config/funds.json`
+- **基金引擎** (`internal/fund/`): 多品种组合回测，基于净值计算，并发执行，配置从数据库加载
+- **数据库层** (`internal/db/`): SQLite存储配置和结果，纯Go驱动无需CGO，WAL模式
 - **Web服务** (`internal/web/`): REST API + SPA前端，基金回测采用异步任务+进度轮询
 
 ## 添加新策略
@@ -46,10 +47,13 @@ K线数据 → [信号层] → TradeSignal[] → [资金层] → DailyRecord[] /
 
 ```bash
 go run cmd/web/main.go                    # 启动服务
+./scripts/verify_baselines.sh             # Linux/macOS验证
 .\scripts\verify_baselines.ps1            # Windows验证
 ```
 
 验证内容：Signals一致性 + Statistics一致性
+
+验证脚本通过API从数据库获取回测结果，与基线文件进行对比。信号方向映射：0=Buy, 1=Sell, 2=Close, 3=CloseShort, 4=CloseLong。统计值对比使用0.0001容差。
 
 ## 常用命令
 
@@ -57,6 +61,9 @@ go run cmd/web/main.go                    # 启动服务
 go run cmd/main.go -symbol RB -start 20240101 -end 20241231 -leverage 3  # 回测
 go run cmd/web/main.go                                                     # Web服务
 go test ./internal/strategy/yinyang/... ./internal/strategy/ma/... -v     # 测试
+go test ./internal/db/... -v                                              # 数据库测试
+go run ./cmd/dbcli/... tables                                             # 查看数据库表
+go run ./cmd/dbcli/... migrate                                            # JSON→数据库迁移
 ```
 
 ## 文档

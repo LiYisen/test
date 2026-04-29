@@ -1,17 +1,12 @@
 package fund
 
 import (
-	"encoding/json"
 	"fmt"
 	"math"
-	"os"
-	"path/filepath"
 	"sync"
-)
 
-type FundConfigFile struct {
-	Funds []FundConfig `json:"funds"`
-}
+	"futures-backtest/internal/db"
+)
 
 var (
 	configMu    sync.RWMutex
@@ -19,31 +14,31 @@ var (
 )
 
 func LoadFundConfig(configPath string) error {
-	file, err := os.Open(configPath)
+	funds, err := db.GetAllFunds()
 	if err != nil {
-		if os.IsNotExist(err) {
-			configMu.Lock()
-			fundConfigs = make(map[string]*FundConfig)
-			configMu.Unlock()
-			return nil
-		}
-		return fmt.Errorf("打开基金配置文件失败: %w", err)
-	}
-	defer file.Close()
-
-	var configFile FundConfigFile
-	if err := json.NewDecoder(file).Decode(&configFile); err != nil {
-		return fmt.Errorf("解析基金配置文件失败: %w", err)
-	}
-
-	configs := make(map[string]*FundConfig)
-	for i := range configFile.Funds {
-		fund := &configFile.Funds[i]
-		configs[fund.ID] = fund
+		return fmt.Errorf("从数据库加载基金配置失败: %w", err)
 	}
 
 	configMu.Lock()
-	fundConfigs = configs
+	fundConfigs = make(map[string]*FundConfig)
+	for i := range funds {
+		fund := &FundConfig{
+			ID:          funds[i].ID,
+			Name:        funds[i].Name,
+			Description: funds[i].Description,
+			StartDate:   funds[i].StartDate,
+			EndDate:     funds[i].EndDate,
+		}
+		for _, pos := range funds[i].Positions {
+			fund.Positions = append(fund.Positions, PositionConfig{
+				Symbol:   pos.Symbol,
+				Strategy: pos.Strategy,
+				Weight:   pos.Weight,
+				Params:   pos.Params,
+			})
+		}
+		fundConfigs[fund.ID] = fund
+	}
 	configMu.Unlock()
 
 	return nil
@@ -51,78 +46,115 @@ func LoadFundConfig(configPath string) error {
 
 func GetFundConfig(fundID string) (*FundConfig, error) {
 	configMu.RLock()
-	defer configMu.RUnlock()
-
-	if fundConfigs == nil {
-		return nil, fmt.Errorf("基金配置未加载")
+	if fundConfigs != nil {
+		if fund, ok := fundConfigs[fundID]; ok {
+			configMu.RUnlock()
+			return fund, nil
+		}
 	}
+	configMu.RUnlock()
 
-	fund, ok := fundConfigs[fundID]
-	if !ok {
+	dbFund, err := db.GetFundByID(fundID)
+	if err != nil {
+		return nil, fmt.Errorf("查询基金配置失败: %w", err)
+	}
+	if dbFund == nil {
 		return nil, fmt.Errorf("基金配置不存在: %s", fundID)
 	}
+
+	fund := &FundConfig{
+		ID:          dbFund.ID,
+		Name:        dbFund.Name,
+		Description: dbFund.Description,
+		StartDate:   dbFund.StartDate,
+		EndDate:     dbFund.EndDate,
+	}
+	for _, pos := range dbFund.Positions {
+		fund.Positions = append(fund.Positions, PositionConfig{
+			Symbol:   pos.Symbol,
+			Strategy: pos.Strategy,
+			Weight:   pos.Weight,
+			Params:   pos.Params,
+		})
+	}
+
+	configMu.Lock()
+	if fundConfigs == nil {
+		fundConfigs = make(map[string]*FundConfig)
+	}
+	fundConfigs[fund.ID] = fund
+	configMu.Unlock()
 
 	return fund, nil
 }
 
 func GetAllFundConfigs() ([]*FundConfig, error) {
-	configMu.RLock()
-	defer configMu.RUnlock()
-
-	if fundConfigs == nil {
-		return nil, fmt.Errorf("基金配置未加载")
+	dbFunds, err := db.GetAllFunds()
+	if err != nil {
+		return nil, fmt.Errorf("查询基金配置失败: %w", err)
 	}
 
 	var configs []*FundConfig
-	for _, fund := range fundConfigs {
+	for i := range dbFunds {
+		fund := &FundConfig{
+			ID:          dbFunds[i].ID,
+			Name:        dbFunds[i].Name,
+			Description: dbFunds[i].Description,
+			StartDate:   dbFunds[i].StartDate,
+			EndDate:     dbFunds[i].EndDate,
+		}
+		for _, pos := range dbFunds[i].Positions {
+			fund.Positions = append(fund.Positions, PositionConfig{
+				Symbol:   pos.Symbol,
+				Strategy: pos.Strategy,
+				Weight:   pos.Weight,
+				Params:   pos.Params,
+			})
+		}
 		configs = append(configs, fund)
 	}
+
+	configMu.Lock()
+	fundConfigs = make(map[string]*FundConfig)
+	for _, f := range configs {
+		fundConfigs[f.ID] = f
+	}
+	configMu.Unlock()
+
 	return configs, nil
 }
 
 func SaveFundConfig(configPath string, fund *FundConfig) error {
-	configMu.Lock()
-	defer configMu.Unlock()
+	if err := ValidateFundConfig(fund); err != nil {
+		return err
+	}
 
+	dbFund := db.Fund{
+		ID:          fund.ID,
+		Name:        fund.Name,
+		Description: fund.Description,
+		StartDate:   fund.StartDate,
+		EndDate:     fund.EndDate,
+	}
+	for _, pos := range fund.Positions {
+		dbFund.Positions = append(dbFund.Positions, db.FundPosition{
+			Symbol:   pos.Symbol,
+			Strategy: pos.Strategy,
+			Weight:   pos.Weight,
+			Params:   pos.Params,
+		})
+	}
+
+	if err := db.UpsertFund(dbFund); err != nil {
+		return fmt.Errorf("保存基金配置到数据库失败: %w", err)
+	}
+
+	configMu.Lock()
 	if fundConfigs == nil {
 		fundConfigs = make(map[string]*FundConfig)
-
-		file, err := os.Open(configPath)
-		if err == nil {
-			var configFile FundConfigFile
-			if err := json.NewDecoder(file).Decode(&configFile); err == nil {
-				for i := range configFile.Funds {
-					existingFund := &configFile.Funds[i]
-					fundConfigs[existingFund.ID] = existingFund
-				}
-			}
-			file.Close()
-		}
 	}
-
 	fundConfigs[fund.ID] = fund
-
-	var configFile FundConfigFile
-	for _, f := range fundConfigs {
-		configFile.Funds = append(configFile.Funds, *f)
-	}
-
-	dir := filepath.Dir(configPath)
-	if err := os.MkdirAll(dir, 0755); err != nil {
-		return fmt.Errorf("创建配置目录失败: %w", err)
-	}
-
-	file, err := os.Create(configPath)
-	if err != nil {
-		return fmt.Errorf("创建配置文件失败: %w", err)
-	}
-	defer file.Close()
-
-	encoder := json.NewEncoder(file)
-	encoder.SetIndent("", "  ")
-	if err := encoder.Encode(configFile); err != nil {
-		return fmt.Errorf("写入配置文件失败: %w", err)
-	}
+	configMu.Unlock()
 
 	return nil
 }

@@ -1,5 +1,30 @@
 $baselinesDir = "baselines"
-$retDir = "ret"
+$apiBase = "http://localhost:8080/api"
+
+function Normalize-Direction {
+    param([string]$dir)
+    switch ($dir) {
+        "0" { return "Buy" }
+        "1" { return "Sell" }
+        "2" { return "Close" }
+        "3" { return "CloseShort" }
+        "4" { return "CloseLong" }
+        default { return $dir }
+    }
+}
+
+function Stats-Equal {
+    param([string]$b, [string]$r)
+    if ($b -eq $r) { return $true }
+    try {
+        $bVal = [double]$b
+        $rVal = [double]$r
+        $diff = [Math]::Abs($bVal - $rVal)
+        return $diff -lt 0.0001
+    } catch {
+        return $false
+    }
+}
 
 if (-not (Test-Path $baselinesDir)) {
     Write-Host "Error: baselines directory not found" -ForegroundColor Red
@@ -14,6 +39,7 @@ if ($baselineFiles.Count -eq 0) {
 }
 
 Write-Host "Starting verification of $($baselineFiles.Count) baseline files..." -ForegroundColor Cyan
+Write-Host "Data source: SQLite database (via API)" -ForegroundColor DarkGray
 Write-Host ""
 
 $passCount = 0
@@ -21,19 +47,19 @@ $failCount = 0
 
 foreach ($file in $baselineFiles) {
     Write-Host "========== Verifying: $($file.Name) ==========" -ForegroundColor Cyan
-    
+
     try {
         $jsonContent = Get-Content $file.FullName -Raw -Encoding UTF8
         $baseline = $jsonContent | ConvertFrom-Json
-        
+
         $symbol = $baseline.request.symbol
         $startDate = $baseline.request.start_date
         $endDate = $baseline.request.end_date
         $strategy = $baseline.request.strategy
         $params = $baseline.request.params
-        
+
         Write-Host "Parameters: Symbol=$symbol, Strategy=$strategy, Start=$startDate, End=$endDate"
-        
+
         $body = @{
             symbol = $symbol
             start_date = $startDate
@@ -41,32 +67,30 @@ foreach ($file in $baselineFiles) {
             strategy = $strategy
             params = $params
         } | ConvertTo-Json -Depth 3
-        
+
         Write-Host "Running backtest..." -ForegroundColor Yellow
-        $response = Invoke-RestMethod -Uri 'http://localhost:8080/api/backtest' -Method POST -ContentType 'application/json' -Body $body -TimeoutSec 300
-        
-        Start-Sleep -Seconds 1
-        
-        $pattern = "${symbol}_${strategy}_${startDate}_${endDate}_*_*.json"
-        $latestFile = Get-ChildItem -Path "$retDir\$pattern" -ErrorAction SilentlyContinue | Where-Object { $_.Name -notmatch '_baseline\.json$' } | Sort-Object LastWriteTime -Descending | Select-Object -First 1
-        
-        if (-not $latestFile) {
-            Write-Host "[FAIL] Result file not found" -ForegroundColor Red
+        $response = Invoke-RestMethod -Uri "$apiBase/backtest" -Method POST -ContentType 'application/json' -Body $body -TimeoutSec 300
+
+        $resultId = $response.id
+        if (-not $resultId) {
+            Write-Host "[FAIL] No result ID in response" -ForegroundColor Red
             $failCount++
             continue
         }
-        
-        Write-Host "Result file: $($latestFile.Name)" -ForegroundColor Gray
-        
-        $resultJson = Get-Content $latestFile.FullName -Raw -Encoding UTF8
-        $result = $resultJson | ConvertFrom-Json
-        
+
+        Write-Host "Result ID: $resultId" -ForegroundColor Gray
+
+        Start-Sleep -Seconds 1
+
         Write-Host ""
         Write-Host "Verifying signals..." -ForegroundColor Yellow
-        
+
+        $resultSignalsData = Invoke-RestMethod -Uri "$apiBase/results/$resultId/data?type=signals" -Method GET
+        $resultSignals = $resultSignalsData.signals
+
         $baselineSignalCount = $baseline.signals.Count
-        $resultSignalCount = $result.signals.Count
-        
+        $resultSignalCount = $resultSignals.Count
+
         $signalsPass = $false
         if ($baselineSignalCount -ne $resultSignalCount) {
             Write-Host "[FAIL] Signal count mismatch" -ForegroundColor Red
@@ -77,17 +101,26 @@ foreach ($file in $baselineFiles) {
             $allMatch = $true
             for ($i = 0; $i -lt $baselineSignalCount; $i++) {
                 $bSig = $baseline.signals[$i]
-                $rSig = $result.signals[$i]
-                
-                if ($bSig.signal_date -ne $rSig.signal_date -or
-                    $bSig.price -ne $rSig.price -or
-                    $bSig.direction -ne $rSig.direction -or
-                    $bSig.symbol -ne $rSig.symbol) {
+                $rSig = $resultSignals[$i]
+
+                $bDate = $bSig.signal_date
+                $rDate = $rSig.date
+                $bPrice = $bSig.price
+                $rPrice = $rSig.price
+                $bDir = Normalize-Direction $bSig.direction
+                $rDir = $rSig.direction
+                $bSym = $bSig.symbol
+                $rSym = $rSig.symbol
+
+                if ($bDate -ne $rDate -or $bPrice -ne $rPrice -or $bDir -ne $rDir -or $bSym -ne $rSym) {
                     $allMatch = $false
+                    Write-Host "  Mismatch at signal $i:" -ForegroundColor DarkGray
+                    Write-Host "    Baseline: date=$bDate price=$bPrice dir=$bDir sym=$bSym" -ForegroundColor DarkGray
+                    Write-Host "    Result:   date=$rDate price=$rPrice dir=$rDir sym=$rSym" -ForegroundColor DarkGray
                     break
                 }
             }
-            
+
             if ($allMatch) {
                 Write-Host "[PASS] Signals verification passed ($baselineSignalCount signals)" -ForegroundColor Green
                 $signalsPass = $true
@@ -96,31 +129,34 @@ foreach ($file in $baselineFiles) {
                 Write-Host "  >>> Strategy-related changes detected <<<" -ForegroundColor Red
             }
         }
-        
+
         Write-Host ""
         Write-Host "Verifying statistics..." -ForegroundColor Yellow
-        
+
+        $resultStatsData = Invoke-RestMethod -Uri "$apiBase/results/$resultId/data?type=stats" -Method GET
+        $resultStats = $resultStatsData.statistics
+
         $statsPass = $false
         $statsMatch = $true
         $diffStats = @()
-        
-        if ($baseline.statistics.total_return -ne $result.statistics.total_return) {
+
+        if (-not (Stats-Equal $baseline.statistics.TotalReturn $resultStats.total_return)) {
             $statsMatch = $false
             $diffStats += "total_return"
         }
-        if ($baseline.statistics.max_drawdown -ne $result.statistics.max_drawdown) {
+        if (-not (Stats-Equal $baseline.statistics.MaxDrawdown $resultStats.max_drawdown)) {
             $statsMatch = $false
             $diffStats += "max_drawdown"
         }
-        if ($baseline.statistics.sharpe_ratio -ne $result.statistics.sharpe_ratio) {
+        if (-not (Stats-Equal $baseline.statistics.SharpeRatio $resultStats.sharpe_ratio)) {
             $statsMatch = $false
             $diffStats += "sharpe_ratio"
         }
-        if ($baseline.statistics.win_rate -ne $result.statistics.win_rate) {
+        if (-not (Stats-Equal $baseline.statistics.WinRate $resultStats.win_rate)) {
             $statsMatch = $false
             $diffStats += "win_rate"
         }
-        
+
         if ($statsMatch) {
             Write-Host "[PASS] Statistics verification passed" -ForegroundColor Green
             $statsPass = $true
@@ -129,24 +165,24 @@ foreach ($file in $baselineFiles) {
             Write-Host "  Different fields: $($diffStats -join ', ')" -ForegroundColor Gray
             Write-Host "  >>> Statistics-related changes detected <<<" -ForegroundColor Red
         }
-        
+
         if ($signalsPass -and $statsPass) {
             $passCount++
         } else {
             $failCount++
         }
-        
-        if ($latestFile) {
-            Remove-Item $latestFile.FullName -Force
-            Write-Host "Cleaned up result file: $($latestFile.Name)" -ForegroundColor Gray
-        }
-        
+
+        Write-Host "Cleaning up result: $resultId" -ForegroundColor Yellow
+        try {
+            Invoke-RestMethod -Uri "$apiBase/results/$resultId" -Method DELETE | Out-Null
+        } catch {}
+
     } catch {
         Write-Host "[FAIL] Verification error: $_" -ForegroundColor Red
         Write-Host "Details: $($_.Exception.Message)" -ForegroundColor Gray
         $failCount++
     }
-    
+
     Write-Host ""
 }
 

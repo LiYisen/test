@@ -18,7 +18,7 @@
 - **后端**: Go 1.21+ / Gin框架
 - **前端**: HTML + JavaScript + Chart.js
 - **数据源**: Python 3.x + akshare
-- **数据库**: JSON文件存储
+- **数据库**: SQLite (modernc.org/sqlite，纯Go驱动，无需CGO)
 
 ## 📦 安装
 
@@ -121,6 +121,13 @@ go run cmd/main.go -symbol RB -start 20240101 -end 20241231 -strategy yinyang -l
 │   │   ├── portfolio.go   # 资金管理
 │   │   ├── engine.go      # 回测引擎
 │   │   └── types.go       # 类型定义
+│   ├── db/                # 数据库访问层
+│   │   ├── database.go    # 数据库初始化与连接
+│   │   ├── symbols.go     # 品种CRUD
+│   │   ├── strategies.go  # 策略CRUD
+│   │   ├── funds.go       # 基金CRUD
+│   │   ├── results.go     # 结果CRUD与导出
+│   │   └── migrate.go     # JSON迁移工具
 │   ├── strategy/          # 策略实现
 │   │   ├── yinyang/       # 阴阳线策略
 │   │   ├── ma/            # 双均线策略
@@ -131,7 +138,9 @@ go run cmd/main.go -symbol RB -start 20240101 -end 20241231 -strategy yinyang -l
 │   └── templates/         # HTML模板
 ├── data/                  # 数据目录
 │   └── klines/            # K线数据
-├── ret/                   # 回测结果
+├── db/                    # SQLite数据库
+│   └── futures.db         # 主数据库文件
+├── ret/                   # 回测结果（文件备份）
 ├── baselines/             # 基线结果
 ├── config/                # 配置文件
 │   └── strategies.json    # 策略配置
@@ -190,6 +199,7 @@ K线数据 → [信号层] → TradeSignal[] → [资金层] → DailyRecord[] /
 
 ```bash
 go test ./internal/strategy/yinyang/... ./internal/strategy/ma/... -v
+go test ./internal/db/... -v
 ```
 
 ### 基线验证
@@ -202,6 +212,15 @@ go test ./internal/strategy/yinyang/... ./internal/strategy/ma/... -v
 
 # Linux/macOS
 ./scripts/verify_baselines.sh
+```
+
+### 数据库工具
+
+```bash
+go run ./cmd/dbcli/... tables             # 查看数据库表
+go run ./cmd/dbcli/... results            # 列出回测结果
+go run ./cmd/dbcli/... export results json # 导出结果为JSON
+go run ./cmd/dbcli/... migrate            # 从JSON迁移数据到数据库
 ```
 
 ## 📈 性能指标
@@ -234,6 +253,7 @@ go test ./internal/strategy/yinyang/... ./internal/strategy/ma/... -v
 - [akshare](https://github.com/akfamily/akshare) - 数据源
 - [Gin](https://github.com/gin-gonic/gin) - Web框架
 - [Chart.js](https://www.chartjs.org/) - 图表库
+- [modernc.org/sqlite](https://gitlab.com/cznic/sqlite) - 纯Go SQLite驱动
 
 ## 📧 联系方式
 
@@ -241,4 +261,4 @@ go test ./internal/strategy/yinyang/... ./internal/strategy/ma/... -v
 
 ---
 
-**最后更新**: 2026-04-24
+**最后更新**: 2026-04-30

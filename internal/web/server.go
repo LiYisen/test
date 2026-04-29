@@ -10,6 +10,7 @@ import (
 
 	"futures-backtest/internal/backtest"
 	"futures-backtest/internal/data"
+	"futures-backtest/internal/db"
 	"futures-backtest/internal/fund"
 	"futures-backtest/internal/strategy"
 	"futures-backtest/pkg/pyexec"
@@ -33,6 +34,10 @@ func NewServer() *Server {
 		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("服务器内部错误: %v", err)})
 	}))
 	r.Use(corsMiddleware())
+
+	if err := db.InitDB(db.GetDefaultDBPath()); err != nil {
+		log.Printf("初始化数据库失败: %v", err)
+	}
 
 	executor := pyexec.NewDefaultExecutor()
 	dataManager := data.NewFuturesDataManager(executor)
@@ -343,6 +348,20 @@ func (s *Server) runBacktest(req BacktestRequest, resultID string) (*BacktestRes
 }
 
 func (s *Server) handleListResults(c *gin.Context) {
+	dbResults, err := db.ListBacktestResults()
+	if err == nil && len(dbResults) > 0 {
+		var results []map[string]string
+		for _, r := range dbResults {
+			id, _ := r["id"].(string)
+			results = append(results, map[string]string{
+				"id":   id,
+				"name": id + ".json",
+			})
+		}
+		c.JSON(http.StatusOK, gin.H{"results": results})
+		return
+	}
+
 	entries, err := os.ReadDir(s.retDir)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -386,6 +405,9 @@ func (s *Server) handleGetResult(c *gin.Context) {
 
 func (s *Server) handleDeleteResult(c *gin.Context) {
 	id := c.Param("id")
+
+	db.DeleteBacktestResult(id)
+
 	filename := filepath.Join(s.retDir, id+".json")
 
 	if _, err := os.Stat(filename); os.IsNotExist(err) {
@@ -817,8 +839,7 @@ func generateContractSymbols(product, startDate, endDate string) []string {
 }
 
 func (s *Server) handleGetFunds(c *gin.Context) {
-	fundConfigPath := filepath.Join("config", "funds.json")
-	if err := fund.LoadFundConfig(fundConfigPath); err != nil {
+	if err := fund.LoadFundConfig(""); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "加载基金配置失败: " + err.Error()})
 		return
 	}
@@ -835,8 +856,7 @@ func (s *Server) handleGetFunds(c *gin.Context) {
 func (s *Server) handleGetFund(c *gin.Context) {
 	fundID := c.Param("id")
 
-	fundConfigPath := filepath.Join("config", "funds.json")
-	if err := fund.LoadFundConfig(fundConfigPath); err != nil {
+	if err := fund.LoadFundConfig(""); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "加载基金配置失败: " + err.Error()})
 		return
 	}
@@ -862,8 +882,7 @@ func (s *Server) handleCreateFund(c *gin.Context) {
 		return
 	}
 
-	fundConfigPath := filepath.Join("config", "funds.json")
-	if err := fund.SaveFundConfig(fundConfigPath, &fundConfig); err != nil {
+	if err := fund.SaveFundConfig("", &fundConfig); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "保存基金配置失败: " + err.Error()})
 		return
 	}
@@ -884,9 +903,7 @@ func (s *Server) handleFundBacktest(c *gin.Context) {
 
 	log.Printf("[基金回测] 开始: fund_id=%s, start=%s, end=%s", req.FundID, req.StartDate, req.EndDate)
 
-	fundConfigPath := filepath.Join("config", "funds.json")
-	log.Printf("[基金回测] 加载配置: %s", fundConfigPath)
-	if err := fund.LoadFundConfig(fundConfigPath); err != nil {
+	if err := fund.LoadFundConfig(""); err != nil {
 		log.Printf("[基金回测] 加载配置失败: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "加载基金配置失败: " + err.Error()})
 		return

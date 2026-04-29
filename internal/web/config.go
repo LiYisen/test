@@ -3,6 +3,7 @@ package web
 import (
 	"bytes"
 	"encoding/json"
+	"futures-backtest/internal/db"
 	"futures-backtest/internal/strategy"
 	"log"
 	"os"
@@ -36,16 +37,22 @@ var (
 func LoadConfig() *Config {
 	configOnce.Do(func() {
 		config = &Config{}
-		loadConfigFromFile()
+		loadConfigFromDB()
 		if len(config.Symbols) > 0 {
-			log.Printf("从配置文件加载了 %d 个品种", len(config.Symbols))
+			log.Printf("从数据库加载了 %d 个品种", len(config.Symbols))
 			go fetchSymbolsFromAkshare()
 		} else {
-			log.Println("配置文件为空，尝试从akshare获取品种列表...")
-			fetchSymbolsFromAkshare()
-			if len(config.Symbols) == 0 {
-				log.Println("akshare获取失败，使用默认品种列表")
-				setDefaultSymbols()
+			loadConfigFromFile()
+			if len(config.Symbols) > 0 {
+				log.Printf("从配置文件加载了 %d 个品种，迁移到数据库", len(config.Symbols))
+				syncSymbolsToDB()
+			} else {
+				log.Println("尝试从akshare获取品种列表...")
+				fetchSymbolsFromAkshare()
+				if len(config.Symbols) == 0 {
+					log.Println("akshare获取失败，使用默认品种列表")
+					setDefaultSymbols()
+				}
 			}
 		}
 	})
@@ -84,7 +91,7 @@ func fetchSymbolsFromAkshare() {
 	configMu.Unlock()
 
 	log.Printf("从akshare获取了 %d 个品种", len(resp.Symbols))
-	saveConfigToFile()
+	syncSymbolsToDB()
 }
 
 func min(a, b int) int {
@@ -94,27 +101,57 @@ func min(a, b int) int {
 	return b
 }
 
-func saveConfigToFile() {
+func syncSymbolsToDB() {
 	configMu.RLock()
-	defer configMu.RUnlock()
+	symbols := config.Symbols
+	configMu.RUnlock()
 
-	os.MkdirAll("config", 0755)
-
-	data, err := json.MarshalIndent(config, "", "  ")
-	if err != nil {
-		log.Printf("序列化配置失败: %v", err)
+	if len(symbols) == 0 {
 		return
 	}
 
-	if err := os.WriteFile("config/symbols.json", data, 0644); err != nil {
-		log.Printf("写入配置文件失败: %v", err)
+	var dbSymbols []db.Symbol
+	for _, s := range symbols {
+		dbSymbols = append(dbSymbols, db.Symbol{
+			Code:     s.Code,
+			Name:     s.Name,
+			Exchange: s.Exchange,
+			Pinyin:   s.Pinyin,
+		})
 	}
+
+	if err := db.UpsertSymbols(dbSymbols); err != nil {
+		log.Printf("同步品种到数据库失败: %v", err)
+	}
+}
+
+func loadConfigFromDB() {
+	dbSymbols, err := db.GetAllSymbols()
+	if err != nil {
+		log.Printf("从数据库加载品种失败: %v", err)
+		return
+	}
+
+	if len(dbSymbols) == 0 {
+		return
+	}
+
+	configMu.Lock()
+	config.Symbols = make([]SymbolConfig, len(dbSymbols))
+	for i, s := range dbSymbols {
+		config.Symbols[i] = SymbolConfig{
+			Code:     s.Code,
+			Name:     s.Name,
+			Exchange: s.Exchange,
+			Pinyin:   s.Pinyin,
+		}
+	}
+	configMu.Unlock()
 }
 
 func loadConfigFromFile() {
 	file, err := os.Open("config/symbols.json")
 	if err != nil {
-		log.Printf("打开配置文件失败: %v", err)
 		return
 	}
 	defer file.Close()
@@ -198,6 +235,7 @@ func setDefaultSymbols() {
 		{Code: "TS", Name: "二年国债", Exchange: "CFFEX", Pinyin: "engz"},
 	}
 	log.Printf("使用默认品种列表，共 %d 个品种", len(config.Symbols))
+	syncSymbolsToDB()
 }
 
 func GetSymbols() []SymbolConfig {
