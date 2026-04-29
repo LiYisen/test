@@ -33,9 +33,9 @@ func (r *Reporter) PrintSignals() {
 	fmt.Println(strings.Repeat("-", 68))
 
 	for _, sig := range r.signals {
-		fmt.Printf("%-12s %-12s %-10s %-12s %-8s %-12s\n",
+		fmt.Printf("%-12s %-12s %-10s %-12.2f %-8.2f %-12s\n",
 			sig.SignalDate, sig.Symbol, sig.Direction.String(),
-			sig.Price.StringFixed(2), sig.Leverage.StringFixed(2), sig.SignalType)
+			sig.Price, sig.Leverage, sig.SignalType)
 	}
 
 	fmt.Printf("\n共 %d 条交易信号\n", len(r.signals))

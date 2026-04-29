@@ -11,8 +11,6 @@ import (
 	"futures-backtest/internal/backtest"
 	"futures-backtest/internal/data"
 	"futures-backtest/internal/strategy"
-
-	"github.com/shopspring/decimal"
 )
 
 func init() {
@@ -30,8 +28,8 @@ func main() {
 	flag.Parse()
 
 	fmt.Println("========== 期货回测系统 ==========")
-	fmt.Printf("品种: %s | 区间: %s ~ %s | 杠杆系数: %s | 策略: %s\n",
-		*symbol, *startDate, *endDate, decimal.NewFromFloat(*leverage).StringFixed(2), *strategyName)
+	fmt.Printf("品种: %s | 区间: %s ~ %s | 杠杆系数: %.2f | 策略: %s\n",
+		*symbol, *startDate, *endDate, *leverage, *strategyName)
 	fmt.Println()
 
 	// 使用策略工厂创建策略

@@ -1,21 +1,21 @@
 package yinyang
 
 import (
-	"futures-backtest/internal/backtest"
+	"math"
 
-	"github.com/shopspring/decimal"
+	"futures-backtest/internal/backtest"
 )
 
 type YinYangStrategy struct {
 	stateManagers  map[string]*StateManager
-	leverageFactor decimal.Decimal
+	leverageFactor float64
 
 	position *backtest.SignalPosition
 
-	longSignalPrice  decimal.Decimal
-	shortSignalPrice decimal.Decimal
+	longSignalPrice  float64
+	shortSignalPrice float64
 
-	reverseSignalPrice decimal.Decimal
+	reverseSignalPrice float64
 
 	ready               bool
 	currentSymbol       string
@@ -25,7 +25,7 @@ type YinYangStrategy struct {
 func NewYinYangStrategy(leverageFactor float64) *YinYangStrategy {
 	return &YinYangStrategy{
 		stateManagers:  make(map[string]*StateManager),
-		leverageFactor: decimal.NewFromFloat(leverageFactor / 100.0),
+		leverageFactor: leverageFactor / 100.0,
 	}
 }
 
@@ -94,11 +94,11 @@ func (s *YinYangStrategy) ProcessKLine(kline backtest.KLineWithContract) []backt
 
 		triggered := false
 		if s.position.Direction == backtest.Buy {
-			if decimal.NewFromFloat(kline.Low).LessThanOrEqual(s.reverseSignalPrice) {
+			if kline.Low <= s.reverseSignalPrice {
 				triggered = true
 			}
 		} else {
-			if decimal.NewFromFloat(kline.High).GreaterThanOrEqual(s.reverseSignalPrice) {
+			if kline.High >= s.reverseSignalPrice {
 				triggered = true
 			}
 		}
@@ -136,11 +136,8 @@ func (s *YinYangStrategy) ProcessKLine(kline backtest.KLineWithContract) []backt
 		s.updateNoPositionSignalPrices()
 	}
 
-	high := decimal.NewFromFloat(kline.High)
-	low := decimal.NewFromFloat(kline.Low)
-
-	longTriggered := high.GreaterThanOrEqual(s.longSignalPrice)
-	shortTriggered := low.LessThanOrEqual(s.shortSignalPrice)
+	longTriggered := kline.High >= s.longSignalPrice
+	shortTriggered := kline.Low <= s.shortSignalPrice
 
 	if sm.HasTempState() {
 		sm.MarkTempUsed()
@@ -167,10 +164,10 @@ func (s *YinYangStrategy) ProcessKLine(kline backtest.KLineWithContract) []backt
 	return nil
 }
 
-func (s *YinYangStrategy) executeOpenSignal(kline backtest.KLineWithContract, dir backtest.Direction, price decimal.Decimal) []backtest.TradeSignal {
+func (s *YinYangStrategy) executeOpenSignal(kline backtest.KLineWithContract, dir backtest.Direction, price float64) []backtest.TradeSignal {
 	sm := s.getOrCreateStateManager(kline.Symbol)
 	state := sm.State()
-	var leverage decimal.Decimal
+	var leverage float64
 	if dir == backtest.Buy {
 		leverage = s.calcLongLeverage(state, price)
 	} else {
@@ -212,23 +209,23 @@ func (s *YinYangStrategy) updateNoPositionSignalPrices() {
 
 	if state.Yin1.IsValid && state.Yang1.IsValid {
 		if !s.hasEverHeldPosition {
-			s.longSignalPrice = decimal.Max(state.Yin1.High, state.Yang1.High)
-			s.shortSignalPrice = decimal.Min(state.Yin1.Low, state.Yang1.Low)
+			s.longSignalPrice = math.Max(state.Yin1.High, state.Yang1.High)
+			s.shortSignalPrice = math.Min(state.Yin1.Low, state.Yang1.Low)
 		} else {
 			if currentIsYang {
-				s.longSignalPrice = decimal.Max(state.Yin1.High, state.Yang1.High)
+				s.longSignalPrice = math.Max(state.Yin1.High, state.Yang1.High)
 				if state.Yin2.IsValid {
-					s.shortSignalPrice = decimal.Min(state.Yang1.Low, state.Yin2.Low)
+					s.shortSignalPrice = math.Min(state.Yang1.Low, state.Yin2.Low)
 				} else {
 					s.shortSignalPrice = state.Yang1.Low
 				}
 			} else {
 				if state.Yang2.IsValid {
-					s.longSignalPrice = decimal.Max(state.Yin1.High, state.Yang2.High)
+					s.longSignalPrice = math.Max(state.Yin1.High, state.Yang2.High)
 				} else {
 					s.longSignalPrice = state.Yin1.High
 				}
-				s.shortSignalPrice = decimal.Min(state.Yin1.Low, state.Yang1.Low)
+				s.shortSignalPrice = math.Min(state.Yin1.Low, state.Yang1.Low)
 			}
 		}
 	}
@@ -252,10 +249,10 @@ func (s *YinYangStrategy) UpdateReverseSignalPrice() {
 
 	if s.position.Direction == backtest.Buy {
 		if currentIsYang {
-			s.reverseSignalPrice = decimal.Min(state.Yin1.Low, state.Yang1.Low)
+			s.reverseSignalPrice = math.Min(state.Yin1.Low, state.Yang1.Low)
 		} else {
 			if state.Yin2.IsValid {
-				s.reverseSignalPrice = decimal.Min(state.Yang1.Low, state.Yin2.Low)
+				s.reverseSignalPrice = math.Min(state.Yang1.Low, state.Yin2.Low)
 			} else {
 				s.reverseSignalPrice = state.Yang1.Low
 			}
@@ -263,12 +260,12 @@ func (s *YinYangStrategy) UpdateReverseSignalPrice() {
 	} else if s.position.Direction == backtest.Sell {
 		if currentIsYang {
 			if state.Yang2.IsValid {
-				s.reverseSignalPrice = decimal.Max(state.Yin1.High, state.Yang2.High)
+				s.reverseSignalPrice = math.Max(state.Yin1.High, state.Yang2.High)
 			} else {
 				s.reverseSignalPrice = state.Yin1.High
 			}
 		} else {
-			s.reverseSignalPrice = decimal.Max(state.Yin1.High, state.Yang1.High)
+			s.reverseSignalPrice = math.Max(state.Yin1.High, state.Yang1.High)
 		}
 	}
 }
@@ -342,38 +339,38 @@ func (s *YinYangStrategy) closeAndReverse(kline backtest.KLineWithContract, clos
 	return signals
 }
 
-func (s *YinYangStrategy) SignalPrices() (long, short decimal.Decimal) {
+func (s *YinYangStrategy) SignalPrices() (long, short float64) {
 	if s.position == nil {
 		if s.ready {
 			return s.longSignalPrice, s.shortSignalPrice
 		}
-		return decimal.Zero, decimal.Zero
+		return 0, 0
 	}
 
 	if s.position.Direction == backtest.Buy {
-		return decimal.Zero, s.reverseSignalPrice
+		return 0, s.reverseSignalPrice
 	} else {
-		return s.reverseSignalPrice, decimal.Zero
+		return s.reverseSignalPrice, 0
 	}
 }
 
-func (s *YinYangStrategy) SignalPricesForSymbol(symbol string) (long, short decimal.Decimal) {
+func (s *YinYangStrategy) SignalPricesForSymbol(symbol string) (long, short float64) {
 	sm := s.getOrCreateStateManager(symbol)
 	state := sm.State()
 
 	if !state.Yin1.IsValid || !state.Yang1.IsValid {
-		return decimal.Zero, decimal.Zero
+		return 0, 0
 	}
 
-	longPrice := decimal.Max(state.Yin1.High, state.Yang1.High)
-	shortPrice := decimal.Min(state.Yin1.Low, state.Yang1.Low)
+	longPrice := math.Max(state.Yin1.High, state.Yang1.High)
+	shortPrice := math.Min(state.Yin1.Low, state.Yang1.Low)
 
 	return longPrice, shortPrice
 }
 
-func (s *YinYangStrategy) ReverseSignalPriceForSymbol(symbol string, position *backtest.SignalPosition) decimal.Decimal {
+func (s *YinYangStrategy) ReverseSignalPriceForSymbol(symbol string, position *backtest.SignalPosition) float64 {
 	if position == nil {
-		return decimal.Zero
+		return 0
 	}
 
 	sm := s.getOrCreateStateManager(symbol)
@@ -382,10 +379,10 @@ func (s *YinYangStrategy) ReverseSignalPriceForSymbol(symbol string, position *b
 
 	if position.Direction == backtest.Buy {
 		if currentIsYang {
-			return decimal.Min(state.Yin1.Low, state.Yang1.Low)
+			return math.Min(state.Yin1.Low, state.Yang1.Low)
 		} else {
 			if state.Yin2.IsValid {
-				return decimal.Min(state.Yang1.Low, state.Yin2.Low)
+				return math.Min(state.Yang1.Low, state.Yin2.Low)
 			} else {
 				return state.Yang1.Low
 			}
@@ -393,54 +390,50 @@ func (s *YinYangStrategy) ReverseSignalPriceForSymbol(symbol string, position *b
 	} else {
 		if currentIsYang {
 			if state.Yang2.IsValid {
-				return decimal.Max(state.Yin1.High, state.Yang2.High)
+				return math.Max(state.Yin1.High, state.Yang2.High)
 			} else {
 				return state.Yin1.High
 			}
 		} else {
-			return decimal.Max(state.Yin1.High, state.Yang1.High)
+			return math.Max(state.Yin1.High, state.Yang1.High)
 		}
 	}
 }
 
-var maxLeverage = decimal.NewFromInt(6)
+var maxLeverage = 6.0
 
-func (s *YinYangStrategy) calcLongLeverage(state YinYangState, openPrice decimal.Decimal) decimal.Decimal {
-	minLow := decimal.Min(state.Yin1.Low, state.Yang1.Low)
-	denominator := openPrice.Sub(minLow)
-	if !denominator.IsPositive() {
-		return decimal.NewFromInt(1)
+func (s *YinYangStrategy) calcLongLeverage(state YinYangState, openPrice float64) float64 {
+	minLow := math.Min(state.Yin1.Low, state.Yang1.Low)
+	denominator := openPrice - minLow
+	if denominator <= 0 {
+		return 1
 	}
-	lev := s.leverageFactor.Mul(openPrice).Div(denominator)
-	if lev.GreaterThan(maxLeverage) {
+	lev := s.leverageFactor * openPrice / denominator
+	if lev > maxLeverage {
 		return maxLeverage
 	}
 	return lev
 }
 
-func (s *YinYangStrategy) calcShortLeverage(state YinYangState, openPrice decimal.Decimal) decimal.Decimal {
-	maxHigh := decimal.Max(state.Yin1.High, state.Yang1.High)
-	denominator := maxHigh.Sub(openPrice)
-	if !denominator.IsPositive() {
-		return decimal.NewFromInt(1)
+func (s *YinYangStrategy) calcShortLeverage(state YinYangState, openPrice float64) float64 {
+	maxHigh := math.Max(state.Yin1.High, state.Yang1.High)
+	denominator := maxHigh - openPrice
+	if denominator <= 0 {
+		return 1
 	}
-	lev := s.leverageFactor.Mul(openPrice).Div(denominator)
-	if lev.GreaterThan(maxLeverage) {
+	lev := s.leverageFactor * openPrice / denominator
+	if lev > maxLeverage {
 		return maxLeverage
 	}
 	return lev
 }
 
 func (s *YinYangStrategy) isKLineYang(kline backtest.KLineData) bool {
-	close := decimal.NewFromFloat(kline.Close)
-	open := decimal.NewFromFloat(kline.Open)
-	return close.GreaterThan(open)
+	return kline.Close > kline.Open
 }
 
 func (s *YinYangStrategy) isKLineDoji(kline backtest.KLineData) bool {
-	close := decimal.NewFromFloat(kline.Close)
-	open := decimal.NewFromFloat(kline.Open)
-	return close.Equal(open)
+	return kline.Close == kline.Open
 }
 
 func (s *YinYangStrategy) tryGenerateTempState(kline backtest.KLineWithContract, dir backtest.Direction) {
@@ -453,18 +446,14 @@ func (s *YinYangStrategy) tryGenerateTempState(kline backtest.KLineWithContract,
 	}
 
 	if dir == backtest.Buy && !isYang {
-		high := decimal.NewFromFloat(kline.High)
-		low := decimal.NewFromFloat(kline.Low)
-		sm.GenerateTempState(true, high, low)
+		sm.GenerateTempState(true, kline.High, kline.Low)
 	} else if dir == backtest.Sell && isYang {
-		high := decimal.NewFromFloat(kline.High)
-		low := decimal.NewFromFloat(kline.Low)
-		sm.GenerateTempState(false, high, low)
+		sm.GenerateTempState(false, kline.High, kline.Low)
 	}
 }
 
 func (s *YinYangStrategy) SimulateTrading(klines []backtest.KLineWithContract) *backtest.SignalPosition {
-	simStrategy := NewYinYangStrategy(s.leverageFactor.Mul(decimal.NewFromInt(100)).InexactFloat64())
+	simStrategy := NewYinYangStrategy(s.leverageFactor * 100)
 
 	for _, kl := range klines {
 		simStrategy.ProcessKLine(kl)

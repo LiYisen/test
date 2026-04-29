@@ -6,8 +6,6 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
-
-	"github.com/shopspring/decimal"
 )
 
 type FundConfigFile struct {
@@ -145,7 +143,7 @@ func ValidateFundConfig(fund *FundConfig) error {
 		return fmt.Errorf("基金至少需要一个持仓品种")
 	}
 
-	totalWeight := decimal.Zero
+	totalWeight := 0.0
 	for _, pos := range fund.Positions {
 		if pos.Symbol == "" {
 			return fmt.Errorf("品种代码不能为空")
@@ -153,14 +151,14 @@ func ValidateFundConfig(fund *FundConfig) error {
 		if pos.Strategy == "" {
 			return fmt.Errorf("策略名称不能为空")
 		}
-		if pos.Weight.LessThanOrEqual(decimal.Zero) {
+		if pos.Weight <= 0 {
 			return fmt.Errorf("品种权重必须大于0: %s", pos.Symbol)
 		}
-		totalWeight = totalWeight.Add(pos.Weight)
+		totalWeight += pos.Weight
 	}
 
-	if !totalWeight.Equals(decimal.NewFromInt(1)) {
-		return fmt.Errorf("权重总和必须为1，当前总和: %s", totalWeight.String())
+	if totalWeight != 1.0 {
+		return fmt.Errorf("权重总和必须为1，当前总和: %.6f", totalWeight)
 	}
 
 	return nil

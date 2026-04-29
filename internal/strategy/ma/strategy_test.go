@@ -5,7 +5,6 @@ import (
 
 	"futures-backtest/internal/backtest"
 
-	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -14,7 +13,7 @@ func TestNewMAStrategy(t *testing.T) {
 	assert.NotNil(t, strategy)
 	assert.Equal(t, 5, strategy.shortPeriod)
 	assert.Equal(t, 20, strategy.longPeriod)
-	assert.True(t, strategy.leverage.Equal(decimal.NewFromFloat(1.0)))
+	assert.InDelta(t, 1.0, strategy.leverage, 0.0001)
 }
 
 func TestStateManager_Update(t *testing.T) {
@@ -29,8 +28,8 @@ func TestStateManager_Update(t *testing.T) {
 
 	assert.True(t, sm.IsReady())
 	shortMA, longMA := sm.GetMAs()
-	assert.True(t, shortMA.GreaterThan(decimal.Zero))
-	assert.True(t, longMA.GreaterThan(decimal.Zero))
+	assert.Greater(t, shortMA, 0.0)
+	assert.Greater(t, longMA, 0.0)
 }
 
 func TestStateManager_IsReady(t *testing.T) {
@@ -65,11 +64,8 @@ func TestStateManager_GetMAs(t *testing.T) {
 
 	shortMA, longMA := sm.GetMAs()
 
-	expectedShortMA := decimal.NewFromFloat(40)
-	expectedLongMA := decimal.NewFromFloat(30)
-
-	assert.True(t, shortMA.Equal(expectedShortMA))
-	assert.True(t, longMA.Equal(expectedLongMA))
+	assert.InDelta(t, 40.0, shortMA, 0.0001)
+	assert.InDelta(t, 30.0, longMA, 0.0001)
 }
 
 func TestMAStrategy_ProcessKLine_NoPosition(t *testing.T) {
@@ -164,7 +160,7 @@ func TestMAStrategy_State(t *testing.T) {
 	}
 
 	state := strategy.State()
-	assert.True(t, state.ShortMA.GreaterThan(decimal.Zero))
+	assert.Greater(t, state.ShortMA, 0.0)
 }
 
 func TestMAAdapter_ProcessKLine(t *testing.T) {
@@ -197,8 +193,8 @@ func TestMAAdapter_State(t *testing.T) {
 	adapter := NewMAAdapter(strategy)
 
 	state := adapter.State()
-	assert.True(t, state.ShortMA.Equal(decimal.Zero))
-	assert.True(t, state.LongMA.Equal(decimal.Zero))
+	assert.InDelta(t, 0.0, state.ShortMA, 0.0001)
+	assert.InDelta(t, 0.0, state.LongMA, 0.0001)
 }
 
 func TestRolloverHandler_CheckAndExecute_NoPosition(t *testing.T) {

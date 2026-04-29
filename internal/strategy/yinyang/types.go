@@ -1,11 +1,9 @@
 package yinyang
 
-import "github.com/shopspring/decimal"
-
 type YinYangElement struct {
-	High    decimal.Decimal `json:"high"`
-	Low     decimal.Decimal `json:"low"`
-	IsValid bool            `json:"is_valid"`
+	High    float64 `json:"high"`
+	Low     float64 `json:"low"`
+	IsValid bool    `json:"is_valid"`
 }
 
 type YinYangState struct {

@@ -2,31 +2,25 @@ package backtest
 
 import (
 	"sort"
-
-	"github.com/shopspring/decimal"
 )
 
-// PortfolioEngine 收益计算引擎，只依赖通用信号，不依赖策略类型
 type PortfolioEngine struct{}
 
 func NewPortfolioEngine() *PortfolioEngine {
 	return &PortfolioEngine{}
 }
 
-// PositionReturn 持仓收益记录
 type PositionReturn struct {
 	OpenDate   string
 	CloseDate  string
 	Symbol     string
 	Direction  Direction
-	OpenPrice  decimal.Decimal
-	ClosePrice decimal.Decimal
-	Leverage   decimal.Decimal
-	Return     decimal.Decimal
+	OpenPrice  float64
+	ClosePrice float64
+	Leverage   float64
+	Return     float64
 }
 
-// Calculate 根据交易信号和K线数据计算收益
-// 核心逻辑：信号驱动，与策略类型完全解耦
 func (e *PortfolioEngine) Calculate(signals []TradeSignal, klines []KLineWithContract) ([]DailyRecord, []PositionReturn, error) {
 	sort.Slice(klines, func(i, j int) bool {
 		return klines[i].Date < klines[j].Date
@@ -51,22 +45,21 @@ func (e *PortfolioEngine) Calculate(signals []TradeSignal, klines []KLineWithCon
 		signalsByDate[sig.SignalDate] = append(signalsByDate[sig.SignalDate], sig)
 	}
 
-	closePriceMap := make(map[string]decimal.Decimal, len(klines))
+	closePriceMap := make(map[string]float64, len(klines))
 	for _, kl := range klines {
 		key := kl.Date + "|" + kl.Symbol
-		closePriceMap[key] = decimal.NewFromFloat(kl.Close)
+		closePriceMap[key] = kl.Close
 	}
 
 	var records []DailyRecord
 	var positionReturns []PositionReturn
 
-	decOne := decimal.NewFromInt(1)
-	totalValue := decOne
+	totalValue := 1.0
 	var currentPos *struct {
 		Symbol    string
 		Direction Direction
-		OpenPrice decimal.Decimal
-		Leverage  decimal.Decimal
+		OpenPrice float64
+		Leverage  float64
 		OpenDate  string
 	}
 
@@ -74,19 +67,18 @@ func (e *PortfolioEngine) Calculate(signals []TradeSignal, klines []KLineWithCon
 		if daySignals, ok := signalsByDate[date]; ok {
 			for _, sig := range daySignals {
 				if sig.Direction == Buy || sig.Direction == Sell {
-					// 开新仓前，先平掉旧仓
 					if currentPos != nil {
 						pr := e.calcReturn(currentPos, sig.SignalDate, sig.Price)
 						if pr != nil {
 							positionReturns = append(positionReturns, *pr)
-							totalValue = totalValue.Mul(decOne.Add(pr.Return.Mul(pr.Leverage)))
+							totalValue = totalValue * (1 + pr.Return*pr.Leverage)
 						}
 					}
 					currentPos = &struct {
 						Symbol    string
 						Direction Direction
-						OpenPrice decimal.Decimal
-						Leverage  decimal.Decimal
+						OpenPrice float64
+						Leverage  float64
 						OpenDate  string
 					}{
 						Symbol:    sig.Symbol,
@@ -96,12 +88,11 @@ func (e *PortfolioEngine) Calculate(signals []TradeSignal, klines []KLineWithCon
 						OpenDate:  sig.SignalDate,
 					}
 				} else if sig.Direction == CloseLong || sig.Direction == CloseShort || sig.Direction == Close {
-					// 平仓信号
 					if currentPos != nil {
 						pr := e.calcReturn(currentPos, sig.SignalDate, sig.Price)
 						if pr != nil {
 							positionReturns = append(positionReturns, *pr)
-							totalValue = totalValue.Mul(decOne.Add(pr.Return.Mul(pr.Leverage)))
+							totalValue = totalValue * (1 + pr.Return*pr.Leverage)
 						}
 						currentPos = nil
 					}
@@ -109,32 +100,30 @@ func (e *PortfolioEngine) Calculate(signals []TradeSignal, klines []KLineWithCon
 			}
 		}
 
-		// 计算当日有效净值（包含未实现盈亏）
 		effectiveValue := totalValue
 		if currentPos != nil {
 			key := date + "|" + currentPos.Symbol
-			if closePrice, ok := closePriceMap[key]; ok && !closePrice.IsZero() {
-				var unrealizedRet decimal.Decimal
+			if closePrice, ok := closePriceMap[key]; ok && closePrice != 0 {
+				var unrealizedRet float64
 				if currentPos.Direction == Buy {
-					unrealizedRet = closePrice.Sub(currentPos.OpenPrice).Div(currentPos.OpenPrice)
+					unrealizedRet = (closePrice - currentPos.OpenPrice) / currentPos.OpenPrice
 				} else {
-					unrealizedRet = currentPos.OpenPrice.Sub(closePrice).Div(currentPos.OpenPrice)
+					unrealizedRet = (currentPos.OpenPrice - closePrice) / currentPos.OpenPrice
 				}
-				effectiveValue = totalValue.Mul(decOne.Add(unrealizedRet.Mul(currentPos.Leverage)))
+				effectiveValue = totalValue * (1 + unrealizedRet*currentPos.Leverage)
 			}
 		}
 
-		// 计算日收益率
-		var dailyReturn decimal.Decimal
+		var dailyReturn float64
 		if len(records) > 0 {
-			dailyReturn = effectiveValue.Div(records[len(records)-1].TotalValue).Sub(decOne)
+			dailyReturn = effectiveValue/records[len(records)-1].TotalValue - 1
 		}
 		records = append(records, DailyRecord{
 			Date:        date,
-			Position:    decimal.Zero,
+			Position:    0,
 			Cash:        effectiveValue,
 			TotalValue:  effectiveValue,
-			PnL:         effectiveValue.Sub(decOne),
+			PnL:         effectiveValue - 1,
 			DailyReturn: dailyReturn,
 		})
 	}
@@ -142,23 +131,22 @@ func (e *PortfolioEngine) Calculate(signals []TradeSignal, klines []KLineWithCon
 	return records, positionReturns, nil
 }
 
-// calcReturn 计算单次交易收益
 func (e *PortfolioEngine) calcReturn(pos *struct {
 	Symbol    string
 	Direction Direction
-	OpenPrice decimal.Decimal
-	Leverage  decimal.Decimal
+	OpenPrice float64
+	Leverage  float64
 	OpenDate  string
-}, closeDate string, closePrice decimal.Decimal) *PositionReturn {
+}, closeDate string, closePrice float64) *PositionReturn {
 	if pos == nil {
 		return nil
 	}
 
-	var ret decimal.Decimal
+	var ret float64
 	if pos.Direction == Buy {
-		ret = closePrice.Sub(pos.OpenPrice).Div(pos.OpenPrice)
+		ret = (closePrice - pos.OpenPrice) / pos.OpenPrice
 	} else {
-		ret = pos.OpenPrice.Sub(closePrice).Div(pos.OpenPrice)
+		ret = (pos.OpenPrice - closePrice) / pos.OpenPrice
 	}
 
 	return &PositionReturn{

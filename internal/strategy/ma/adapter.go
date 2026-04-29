@@ -2,8 +2,6 @@ package ma
 
 import (
 	"futures-backtest/internal/backtest"
-
-	"github.com/shopspring/decimal"
 )
 
 type MAAdapter struct {
@@ -42,11 +40,11 @@ func (a *MAAdapter) StateForSymbol(symbol string) MAState {
 	return a.strategy.StateForSymbol(symbol)
 }
 
-func (a *MAAdapter) GetMAs() (shortMA, longMA decimal.Decimal) {
+func (a *MAAdapter) GetMAs() (shortMA, longMA float64) {
 	return a.strategy.GetMAs()
 }
 
-func (a *MAAdapter) GetMAsForSymbol(symbol string) (shortMA, longMA decimal.Decimal) {
+func (a *MAAdapter) GetMAsForSymbol(symbol string) (shortMA, longMA float64) {
 	return a.strategy.GetMAsForSymbol(symbol)
 }
 

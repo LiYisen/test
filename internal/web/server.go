@@ -15,7 +15,6 @@ import (
 	"futures-backtest/pkg/pyexec"
 
 	"github.com/gin-gonic/gin"
-	"github.com/shopspring/decimal"
 )
 
 // Server Web服务器
@@ -498,21 +497,21 @@ func (s *Server) handleGetResultData(c *gin.Context) {
 
 func convertStatistics(stats backtest.Statistics) map[string]interface{} {
 	return map[string]interface{}{
-		"total_return":       stats.TotalReturn.StringFixed(4),
-		"annual_return":      stats.AnnualReturn.StringFixed(4),
-		"max_drawdown":       stats.MaxDrawdown.StringFixed(4),
-		"max_drawdown_ratio": stats.MaxDrawdownRatio.StringFixed(4),
-		"win_rate":           stats.WinRate.StringFixed(4),
-		"profit_loss_ratio":  stats.ProfitLossRatio.StringFixed(4),
+		"total_return":       fmt.Sprintf("%.4f", stats.TotalReturn),
+		"annual_return":      fmt.Sprintf("%.4f", stats.AnnualReturn),
+		"max_drawdown":       fmt.Sprintf("%.4f", stats.MaxDrawdown),
+		"max_drawdown_ratio": fmt.Sprintf("%.4f", stats.MaxDrawdownRatio),
+		"win_rate":           fmt.Sprintf("%.4f", stats.WinRate),
+		"profit_loss_ratio":  fmt.Sprintf("%.4f", stats.ProfitLossRatio),
 		"winning_trades":     stats.WinningTrades,
 		"losing_trades":      stats.LosingTrades,
 		"total_trades":       stats.TotalTrades,
-		"total_win":          stats.TotalWin.StringFixed(4),
-		"total_loss":         stats.TotalLoss.StringFixed(4),
-		"sharpe_ratio":       stats.SharpeRatio.StringFixed(4),
-		"calmar_ratio":       stats.CalmarRatio.StringFixed(4),
+		"total_win":          fmt.Sprintf("%.4f", stats.TotalWin),
+		"total_loss":         fmt.Sprintf("%.4f", stats.TotalLoss),
+		"sharpe_ratio":       fmt.Sprintf("%.4f", stats.SharpeRatio),
+		"calmar_ratio":       fmt.Sprintf("%.4f", stats.CalmarRatio),
 		"trading_days":       stats.TradingDays,
-		"final_value":        stats.FinalValue.StringFixed(4),
+		"final_value":        fmt.Sprintf("%.4f", stats.FinalValue),
 	}
 }
 
@@ -525,21 +524,21 @@ func convertDailyRecords(records []backtest.DailyRecord) []map[string]interface{
 
 	peak := records[0].TotalValue
 	for i, r := range records {
-		if r.TotalValue.GreaterThan(peak) {
+		if r.TotalValue > peak {
 			peak = r.TotalValue
 		}
 
-		drawdown := decimal.Zero
-		if peak.GreaterThan(decimal.Zero) {
-			drawdown = peak.Sub(r.TotalValue).Div(peak)
+		drawdown := 0.0
+		if peak > 0 {
+			drawdown = (peak - r.TotalValue) / peak
 		}
 
 		result[i] = map[string]interface{}{
 			"date":         r.Date,
-			"total_value":  r.TotalValue.StringFixed(4),
-			"daily_return": r.DailyReturn.StringFixed(6),
-			"pnl":          r.PnL.StringFixed(4),
-			"drawdown":     drawdown.StringFixed(6),
+			"total_value":  fmt.Sprintf("%.4f", r.TotalValue),
+			"daily_return": fmt.Sprintf("%.6f", r.DailyReturn),
+			"pnl":          fmt.Sprintf("%.4f", r.PnL),
+			"drawdown":     fmt.Sprintf("%.6f", drawdown),
 		}
 	}
 	return result
@@ -555,7 +554,7 @@ func convertDailyRecordsWithSignals(records []backtest.DailyRecord, signals []ba
 		signalMap[s.SignalDate] = append(signalMap[s.SignalDate], map[string]interface{}{
 			"direction": s.Direction.String(),
 			"type":      s.SignalType,
-			"price":     s.Price.StringFixed(2),
+			"price":     fmt.Sprintf("%.2f", s.Price),
 		})
 	}
 
@@ -563,21 +562,21 @@ func convertDailyRecordsWithSignals(records []backtest.DailyRecord, signals []ba
 
 	peak := records[0].TotalValue
 	for i, r := range records {
-		if r.TotalValue.GreaterThan(peak) {
+		if r.TotalValue > peak {
 			peak = r.TotalValue
 		}
 
-		drawdown := decimal.Zero
-		if peak.GreaterThan(decimal.Zero) {
-			drawdown = peak.Sub(r.TotalValue).Div(peak)
+		drawdown := 0.0
+		if peak > 0 {
+			drawdown = (peak - r.TotalValue) / peak
 		}
 
 		record := map[string]interface{}{
 			"date":         r.Date,
-			"total_value":  r.TotalValue.StringFixed(4),
-			"daily_return": r.DailyReturn.StringFixed(6),
-			"pnl":          r.PnL.StringFixed(4),
-			"drawdown":     drawdown.StringFixed(6),
+			"total_value":  fmt.Sprintf("%.4f", r.TotalValue),
+			"daily_return": fmt.Sprintf("%.6f", r.DailyReturn),
+			"pnl":          fmt.Sprintf("%.4f", r.PnL),
+			"drawdown":     fmt.Sprintf("%.6f", drawdown),
 		}
 
 		if signalList, exists := signalMap[r.Date]; exists {
@@ -596,8 +595,8 @@ func convertSignals(signals []backtest.TradeSignal) []map[string]interface{} {
 			"date":      s.SignalDate,
 			"symbol":    s.Symbol,
 			"direction": s.Direction.String(),
-			"price":     s.Price.StringFixed(2),
-			"leverage":  s.Leverage.StringFixed(2),
+			"price":     fmt.Sprintf("%.2f", s.Price),
+			"leverage":  fmt.Sprintf("%.2f", s.Leverage),
 			"type":      s.SignalType,
 		}
 	}
@@ -614,7 +613,7 @@ func convertKlines(klines []backtest.KLineWithContract, signals []backtest.Trade
 		signalMap[s.SignalDate] = append(signalMap[s.SignalDate], map[string]interface{}{
 			"direction": s.Direction.String(),
 			"type":      s.SignalType,
-			"price":     s.Price.StringFixed(2),
+			"price":     fmt.Sprintf("%.2f", s.Price),
 		})
 	}
 
@@ -647,10 +646,10 @@ func convertPositionReturns(returns []backtest.PositionReturn) []map[string]inte
 			"close_date":  r.CloseDate,
 			"symbol":      r.Symbol,
 			"direction":   r.Direction.String(),
-			"open_price":  r.OpenPrice.StringFixed(2),
-			"close_price": r.ClosePrice.StringFixed(2),
-			"leverage":    r.Leverage.StringFixed(2),
-			"return":      r.Return.StringFixed(6),
+			"open_price":  fmt.Sprintf("%.2f", r.OpenPrice),
+			"close_price": fmt.Sprintf("%.2f", r.ClosePrice),
+			"leverage":    fmt.Sprintf("%.2f", r.Leverage),
+			"return":      fmt.Sprintf("%.6f", r.Return),
 		}
 	}
 	return result
@@ -661,13 +660,13 @@ func convertPortfolioDailyRecords(records []PortfolioDailyRecord) []map[string]i
 	for i, r := range records {
 		components := make(map[string]string)
 		for k, v := range r.Components {
-			components[k] = v.StringFixed(4)
+			components[k] = fmt.Sprintf("%.4f", v)
 		}
 		result[i] = map[string]interface{}{
 			"date":         r.Date,
-			"total_value":  r.TotalValue.StringFixed(4),
-			"daily_return": r.DailyReturn.StringFixed(6),
-			"pnl":          r.PnL.StringFixed(4),
+			"total_value":  fmt.Sprintf("%.4f", r.TotalValue),
+			"daily_return": fmt.Sprintf("%.6f", r.DailyReturn),
+			"pnl":          fmt.Sprintf("%.4f", r.PnL),
 			"components":   components,
 		}
 	}
@@ -682,11 +681,11 @@ func convertPortfolioPositionReturns(returns []PortfolioPositionReturn) []map[st
 			"close_date":  r.CloseDate,
 			"symbol":      r.Symbol,
 			"direction":   r.Direction,
-			"open_price":  r.OpenPrice.StringFixed(2),
-			"close_price": r.ClosePrice.StringFixed(2),
-			"leverage":    r.Leverage.StringFixed(2),
-			"return":      r.Return.StringFixed(6),
-			"weight":      r.Weight.StringFixed(4),
+			"open_price":  fmt.Sprintf("%.2f", r.OpenPrice),
+			"close_price": fmt.Sprintf("%.2f", r.ClosePrice),
+			"leverage":    fmt.Sprintf("%.2f", r.Leverage),
+			"return":      fmt.Sprintf("%.6f", r.Return),
+			"weight":      fmt.Sprintf("%.4f", r.Weight),
 		}
 	}
 	return result
@@ -694,21 +693,21 @@ func convertPortfolioPositionReturns(returns []PortfolioPositionReturn) []map[st
 
 func convertPortfolioStatistics(stats PortfolioStatistics) map[string]interface{} {
 	return map[string]interface{}{
-		"total_return":       stats.TotalReturn.StringFixed(4),
-		"annual_return":      stats.AnnualReturn.StringFixed(4),
-		"max_drawdown":       stats.MaxDrawdown.StringFixed(4),
-		"max_drawdown_ratio": stats.MaxDrawdownRatio.StringFixed(4),
-		"win_rate":           stats.WinRate.StringFixed(4),
-		"profit_loss_ratio":  stats.ProfitLossRatio.StringFixed(4),
+		"total_return":       fmt.Sprintf("%.4f", stats.TotalReturn),
+		"annual_return":      fmt.Sprintf("%.4f", stats.AnnualReturn),
+		"max_drawdown":       fmt.Sprintf("%.4f", stats.MaxDrawdown),
+		"max_drawdown_ratio": fmt.Sprintf("%.4f", stats.MaxDrawdownRatio),
+		"win_rate":           fmt.Sprintf("%.4f", stats.WinRate),
+		"profit_loss_ratio":  fmt.Sprintf("%.4f", stats.ProfitLossRatio),
 		"winning_trades":     stats.WinningTrades,
 		"losing_trades":      stats.LosingTrades,
 		"total_trades":       stats.TotalTrades,
-		"total_win":          stats.TotalWin.StringFixed(4),
-		"total_loss":         stats.TotalLoss.StringFixed(4),
-		"sharpe_ratio":       stats.SharpeRatio.StringFixed(4),
-		"calmar_ratio":       stats.CalmarRatio.StringFixed(4),
+		"total_win":          fmt.Sprintf("%.4f", stats.TotalWin),
+		"total_loss":         fmt.Sprintf("%.4f", stats.TotalLoss),
+		"sharpe_ratio":       fmt.Sprintf("%.4f", stats.SharpeRatio),
+		"calmar_ratio":       fmt.Sprintf("%.4f", stats.CalmarRatio),
 		"trading_days":       stats.TradingDays,
-		"final_value":        stats.FinalValue.StringFixed(4),
+		"final_value":        fmt.Sprintf("%.4f", stats.FinalValue),
 	}
 }
 
@@ -1003,9 +1002,9 @@ func (s *Server) handleGetFundResult(c *gin.Context) {
 	for symbol, pos := range result.PositionResults {
 		positionSummaries[symbol] = map[string]interface{}{
 			"strategy":     pos.Strategy,
-			"weight":       pos.Weight.StringFixed(4),
-			"total_return": pos.Statistics.TotalReturn.StringFixed(4),
-			"win_rate":     pos.Statistics.WinRate.StringFixed(4),
+			"weight":       fmt.Sprintf("%.4f", pos.Weight),
+			"total_return": fmt.Sprintf("%.4f", pos.Statistics.TotalReturn),
+			"win_rate":     fmt.Sprintf("%.4f", pos.Statistics.WinRate),
 			"trading_days": pos.Statistics.TradingDays,
 		}
 	}
@@ -1036,13 +1035,13 @@ func (s *Server) handleDeleteFundResult(c *gin.Context) {
 
 func convertFundStatistics(stats fund.FundStatistics) map[string]interface{} {
 	return map[string]interface{}{
-		"total_return":       stats.TotalReturn.StringFixed(4),
-		"annual_return":      stats.AnnualReturn.StringFixed(4),
-		"max_drawdown":       stats.MaxDrawdown.StringFixed(4),
-		"max_drawdown_ratio": stats.MaxDrawdownRatio.StringFixed(4),
-		"sharpe_ratio":       stats.SharpeRatio.StringFixed(4),
-		"calmar_ratio":       stats.CalmarRatio.StringFixed(4),
-		"win_rate":           stats.WinRate.StringFixed(4),
+		"total_return":       fmt.Sprintf("%.4f", stats.TotalReturn),
+		"annual_return":      fmt.Sprintf("%.4f", stats.AnnualReturn),
+		"max_drawdown":       fmt.Sprintf("%.4f", stats.MaxDrawdown),
+		"max_drawdown_ratio": fmt.Sprintf("%.4f", stats.MaxDrawdownRatio),
+		"sharpe_ratio":       fmt.Sprintf("%.4f", stats.SharpeRatio),
+		"calmar_ratio":       fmt.Sprintf("%.4f", stats.CalmarRatio),
+		"win_rate":           fmt.Sprintf("%.4f", stats.WinRate),
 		"trading_days":       stats.TradingDays,
 		"winning_trades":     stats.WinningTrades,
 		"losing_trades":      stats.LosingTrades,
@@ -1055,13 +1054,13 @@ func convertFundDailyRecords(records []fund.FundDailyRecord) []map[string]interf
 	for i, r := range records {
 		components := make(map[string]string)
 		for k, v := range r.Components {
-			components[k] = v.StringFixed(4)
+			components[k] = fmt.Sprintf("%.4f", v)
 		}
 		result[i] = map[string]interface{}{
 			"date":         r.Date,
-			"total_value":  r.TotalValue.StringFixed(4),
-			"daily_return": r.DailyReturn.StringFixed(6),
-			"pnl":          r.PnL.StringFixed(4),
+			"total_value":  fmt.Sprintf("%.4f", r.TotalValue),
+			"daily_return": fmt.Sprintf("%.6f", r.DailyReturn),
+			"pnl":          fmt.Sprintf("%.4f", r.PnL),
 			"components":   components,
 		}
 	}

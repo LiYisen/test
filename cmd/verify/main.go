@@ -10,8 +10,6 @@ import (
 
 	"futures-backtest/internal/backtest"
 	"futures-backtest/internal/fund"
-
-	"github.com/shopspring/decimal"
 )
 
 func main() {
@@ -37,13 +35,13 @@ func main() {
 		log.Fatalf("加载基金结果失败: %v", err)
 	}
 
-	fmt.Printf("RB: 交易天数=%d, 总收益=%s, 杠杆=%.0f\n",
+	fmt.Printf("RB: 交易天数=%d, 总收益=%.2f%%, 杠杆=%.0f\n",
 		rbResult.Statistics.TradingDays,
-		rbResult.Statistics.TotalReturn.Mul(decimal.NewFromInt(100)).StringFixed(2)+"%",
+		rbResult.Statistics.TotalReturn*100,
 		rbResult.Request.Leverage)
-	fmt.Printf("TA: 交易天数=%d, 总收益=%s, 杠杆=%.0f\n",
+	fmt.Printf("TA: 交易天数=%d, 总收益=%.2f%%, 杠杆=%.0f\n",
 		taResult.Statistics.TradingDays,
-		taResult.Statistics.TotalReturn.Mul(decimal.NewFromInt(100)).StringFixed(2)+"%",
+		taResult.Statistics.TotalReturn*100,
 		taResult.Request.Leverage)
 	fmt.Println()
 
@@ -99,13 +97,13 @@ func main() {
 		fr := fundRecords[i]
 		pr := portfolioRecords[i]
 		er := fundEngineRecords[i]
-		fmt.Printf("%-12s  %-14s  %-14s  %-14s  %-14s  %-14s\n",
+		fmt.Printf("%-12s  %-14.6f  %-14.6f  %-14.6f  %-14.6f  %-14.6f\n",
 			fr.Date,
-			fr.TotalValue.StringFixed(6),
-			pr.TotalValue.StringFixed(6),
-			er.TotalValue.StringFixed(6),
-			fr.DailyReturn.StringFixed(6),
-			pr.DailyReturn.StringFixed(6))
+			fr.TotalValue,
+			pr.TotalValue,
+			er.TotalValue,
+			fr.DailyReturn,
+			pr.DailyReturn)
 	}
 
 	fmt.Println()
@@ -115,17 +113,17 @@ func main() {
 
 type simpleRecord struct {
 	Date        string
-	TotalValue  decimal.Decimal
-	DailyReturn decimal.Decimal
+	TotalValue  float64
+	DailyReturn float64
 }
 
 type simpleStats struct {
 	TradingDays      int
-	TotalReturn      decimal.Decimal
-	AnnualReturn     decimal.Decimal
-	MaxDrawdownRatio decimal.Decimal
-	SharpeRatio      decimal.Decimal
-	WinRate          decimal.Decimal
+	TotalReturn      float64
+	AnnualReturn     float64
+	MaxDrawdownRatio float64
+	SharpeRatio      float64
+	WinRate          float64
 	TotalTrades      int
 }
 
@@ -198,28 +196,27 @@ func mergeFundMode(symbols []symbolInput) []simpleRecord {
 		}
 	}
 
-	decOne := decimal.NewFromInt(1)
-	weight := decimal.NewFromInt(1).Div(decimal.NewFromInt(int64(len(symbols))))
+	weight := 1.0 / float64(len(symbols))
 
 	var records []simpleRecord
-	var cumulativeValue = decOne
+	var cumulativeValue = 1.0
 
 	for _, date := range dates {
-		var weightedReturn decimal.Decimal
-		totalWeight := decimal.Zero
+		var weightedReturn float64
+		totalWeight := 0.0
 
 		for i := range symbols {
 			if dr, ok := dailyMaps[i][date]; ok {
-				weightedReturn = weightedReturn.Add(dr.DailyReturn.Mul(weight))
-				totalWeight = totalWeight.Add(weight)
+				weightedReturn += dr.DailyReturn * weight
+				totalWeight += weight
 			}
 		}
 
-		if totalWeight.IsZero() {
+		if totalWeight == 0 {
 			continue
 		}
 
-		cumulativeValue = cumulativeValue.Mul(decOne.Add(weightedReturn))
+		cumulativeValue = cumulativeValue * (1 + weightedReturn)
 
 		records = append(records, simpleRecord{
 			Date:        date,
@@ -253,18 +250,16 @@ func mergePortfolioMode(symbols []symbolInput) []simpleRecord {
 		}
 	}
 
-	decOne := decimal.NewFromInt(1)
-
 	var records []simpleRecord
-	var cumulativeValue = decOne
+	var cumulativeValue = 1.0
 
 	for _, date := range dates {
-		var dailyReturnSum decimal.Decimal
+		var dailyReturnSum float64
 		validCount := 0
 
 		for i := range symbols {
 			if dr, ok := dailyMaps[i][date]; ok {
-				dailyReturnSum = dailyReturnSum.Add(dr.DailyReturn)
+				dailyReturnSum += dr.DailyReturn
 				validCount++
 			}
 		}
@@ -273,8 +268,8 @@ func mergePortfolioMode(symbols []symbolInput) []simpleRecord {
 			continue
 		}
 
-		avgDailyReturn := dailyReturnSum.Div(decimal.NewFromInt(int64(validCount)))
-		cumulativeValue = cumulativeValue.Mul(decOne.Add(avgDailyReturn))
+		avgDailyReturn := dailyReturnSum / float64(validCount)
+		cumulativeValue = cumulativeValue * (1 + avgDailyReturn)
 
 		records = append(records, simpleRecord{
 			Date:        date,
@@ -292,25 +287,24 @@ func calcStats(records []simpleRecord, symbols []symbolInput) simpleStats {
 		return stats
 	}
 
-	decOne := decimal.NewFromInt(1)
-	stats.TotalReturn = records[len(records)-1].TotalValue.Sub(decOne)
+	stats.TotalReturn = records[len(records)-1].TotalValue - 1
 
 	if len(records) > 1 {
-		fv, _ := records[len(records)-1].TotalValue.Float64()
+		fv := records[len(records)-1].TotalValue
 		years := float64(len(records)) / 250.0
 		if years > 0 {
-			stats.AnnualReturn = decimal.NewFromFloat(math.Pow(fv, 1/years) - 1)
+			stats.AnnualReturn = math.Pow(fv, 1/years) - 1
 		}
 	}
 
-	peak := decOne
-	maxDDPercent := decimal.Zero
+	peak := 1.0
+	maxDDPercent := 0.0
 	for _, rec := range records {
-		if rec.TotalValue.GreaterThan(peak) {
+		if rec.TotalValue > peak {
 			peak = rec.TotalValue
 		}
-		drawdownPercent := peak.Sub(rec.TotalValue).Div(peak)
-		if drawdownPercent.GreaterThan(maxDDPercent) {
+		drawdownPercent := (peak - rec.TotalValue) / peak
+		if drawdownPercent > maxDDPercent {
 			maxDDPercent = drawdownPercent
 		}
 	}
@@ -323,12 +317,12 @@ func calcStats(records []simpleRecord, symbols []symbolInput) simpleStats {
 	}
 	stats.TotalTrades = winCount + lossCount
 	if stats.TotalTrades > 0 {
-		stats.WinRate = decimal.NewFromInt(int64(winCount)).Div(decimal.NewFromInt(int64(stats.TotalTrades)))
+		stats.WinRate = float64(winCount) / float64(stats.TotalTrades)
 	}
 
 	var sum, sqSum float64
 	for _, rec := range records {
-		r, _ := rec.DailyReturn.Float64()
+		r := rec.DailyReturn
 		sum += r
 		sqSum += r * r
 	}
@@ -337,7 +331,7 @@ func calcStats(records []simpleRecord, symbols []symbolInput) simpleStats {
 	if variance > 0 {
 		stdDev := math.Sqrt(variance)
 		if stdDev > 0 {
-			stats.SharpeRatio = decimal.NewFromFloat(mean / stdDev * math.Sqrt(250))
+			stats.SharpeRatio = mean / stdDev * math.Sqrt(250)
 		}
 	}
 
@@ -346,38 +340,38 @@ func calcStats(records []simpleRecord, symbols []symbolInput) simpleStats {
 
 func printStats(name string, stats simpleStats) {
 	fmt.Printf("%s:\n", name)
-	fmt.Printf("  交易天数=%d, 总收益=%s, 年化=%s, 最大回撤=%s, 夏普=%s\n",
+	fmt.Printf("  交易天数=%d, 总收益=%.2f%%, 年化=%.2f%%, 最大回撤=%.2f%%, 夏普=%.2f\n",
 		stats.TradingDays,
-		stats.TotalReturn.Mul(decimal.NewFromInt(100)).StringFixed(2)+"%",
-		stats.AnnualReturn.Mul(decimal.NewFromInt(100)).StringFixed(2)+"%",
-		stats.MaxDrawdownRatio.Mul(decimal.NewFromInt(100)).StringFixed(2)+"%",
-		stats.SharpeRatio.StringFixed(2))
+		stats.TotalReturn*100,
+		stats.AnnualReturn*100,
+		stats.MaxDrawdownRatio*100,
+		stats.SharpeRatio)
 }
 
 func compare(name1, name2 string, records1 []simpleRecord, stats1 simpleStats, records2 []simpleRecord, stats2 simpleStats) {
 	fmt.Printf("\n--- %s vs %s ---\n", name1, name2)
 
-	fmt.Printf("  总收益: %s vs %s", stats1.TotalReturn.StringFixed(6), stats2.TotalReturn.StringFixed(6))
-	if stats1.TotalReturn.Equals(stats2.TotalReturn) {
+	fmt.Printf("  总收益: %.6f vs %.6f", stats1.TotalReturn, stats2.TotalReturn)
+	if stats1.TotalReturn == stats2.TotalReturn {
 		fmt.Printf(" [一致]\n")
 	} else {
-		diff, _ := stats1.TotalReturn.Sub(stats2.TotalReturn).Float64()
+		diff := stats1.TotalReturn - stats2.TotalReturn
 		fmt.Printf(" [差异: %.8f]\n", diff)
 	}
 
-	fmt.Printf("  年化收益: %s vs %s", stats1.AnnualReturn.StringFixed(6), stats2.AnnualReturn.StringFixed(6))
-	if stats1.AnnualReturn.Equals(stats2.AnnualReturn) {
+	fmt.Printf("  年化收益: %.6f vs %.6f", stats1.AnnualReturn, stats2.AnnualReturn)
+	if stats1.AnnualReturn == stats2.AnnualReturn {
 		fmt.Printf(" [一致]\n")
 	} else {
-		diff, _ := stats1.AnnualReturn.Sub(stats2.AnnualReturn).Float64()
+		diff := stats1.AnnualReturn - stats2.AnnualReturn
 		fmt.Printf(" [差异: %.8f]\n", diff)
 	}
 
-	fmt.Printf("  最大回撤: %s vs %s", stats1.MaxDrawdownRatio.StringFixed(6), stats2.MaxDrawdownRatio.StringFixed(6))
-	if stats1.MaxDrawdownRatio.Equals(stats2.MaxDrawdownRatio) {
+	fmt.Printf("  最大回撤: %.6f vs %.6f", stats1.MaxDrawdownRatio, stats2.MaxDrawdownRatio)
+	if stats1.MaxDrawdownRatio == stats2.MaxDrawdownRatio {
 		fmt.Printf(" [一致]\n")
 	} else {
-		diff, _ := stats1.MaxDrawdownRatio.Sub(stats2.MaxDrawdownRatio).Float64()
+		diff := stats1.MaxDrawdownRatio - stats2.MaxDrawdownRatio
 		fmt.Printf(" [差异: %.8f]\n", diff)
 	}
 
@@ -395,9 +389,9 @@ func compare(name1, name2 string, records1 []simpleRecord, stats1 simpleStats, r
 	diffCount := 0
 	var maxDiff float64
 	for i := 0; i < minLen; i++ {
-		if !records1[i].TotalValue.Equals(records2[i].TotalValue) {
+		if records1[i].TotalValue != records2[i].TotalValue {
 			diffCount++
-			d, _ := records1[i].TotalValue.Sub(records2[i].TotalValue).Float64()
+			d := records1[i].TotalValue - records2[i].TotalValue
 			if d < 0 {
 				d = -d
 			}
@@ -428,19 +422,19 @@ func analyzeDifferences(fundRecords, portfolioRecords, fundEngineRecords []simpl
 		fr := fundRecords[i]
 		pr := portfolioRecords[i]
 
-		if !fr.DailyReturn.Equals(pr.DailyReturn) {
+		if fr.DailyReturn != pr.DailyReturn {
 			date := fr.Date
 			details := ""
 			for j, s := range symbols {
 				if dr, ok := dailyMaps[j][date]; ok {
-					details += fmt.Sprintf("%s:%s ", s.name, dr.DailyReturn.StringFixed(4))
+					details += fmt.Sprintf("%s:%.4f ", s.name, dr.DailyReturn)
 				} else {
 					details += fmt.Sprintf("%s:无数据 ", s.name)
 				}
 			}
 
-			fmt.Printf("%-12s  %-10s  %-12s  %-12s  %-12s  %s\n",
-				date, "", "", fr.DailyReturn.StringFixed(6), pr.DailyReturn.StringFixed(6), details)
+			fmt.Printf("%-12s  %-10s  %-12s  %-12.6f  %-12.6f  %s\n",
+				date, "", "", fr.DailyReturn, pr.DailyReturn, details)
 			diffShown++
 		}
 	}
@@ -482,7 +476,7 @@ func analyzeDifferences(fundRecords, portfolioRecords, fundEngineRecords []simpl
 
 	fundDiffCount := 0
 	for i := 0; i < minLen; i++ {
-		if !fundRecords[i].TotalValue.Equals(fundEngineRecords[i].TotalValue) {
+		if fundRecords[i].TotalValue != fundEngineRecords[i].TotalValue {
 			fundDiffCount++
 		}
 	}
@@ -491,6 +485,6 @@ func analyzeDifferences(fundRecords, portfolioRecords, fundEngineRecords []simpl
 	if fundDiffCount > 0 {
 		fmt.Println("  差异原因：FundEngine使用并发执行品种回测，可能产生不同的回测参数（如杠杆）。")
 		fmt.Printf("  注意：RB杠杆=%.0f, TA杠杆=%.0f, 但基金配置中RB=3, TA=2\n",
-			symbols[0].statistics.FinalValue.StringFixed(4), symbols[1].statistics.FinalValue.StringFixed(4))
+			symbols[0].statistics.FinalValue, symbols[1].statistics.FinalValue)
 	}
 }

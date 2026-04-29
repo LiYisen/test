@@ -2,8 +2,6 @@ package ma
 
 import (
 	"futures-backtest/internal/backtest"
-
-	"github.com/shopspring/decimal"
 )
 
 type RolloverHandler struct {
@@ -31,9 +29,9 @@ func (h *RolloverHandler) CheckAndExecute(
 
 	var signals []backtest.TradeSignal
 
-	oldOpenPrice := decimal.NewFromFloat(oldKline.Open)
-	if !oldOpenPrice.IsPositive() {
-		oldOpenPrice = decimal.NewFromFloat(newKline.Open)
+	oldOpenPrice := oldKline.Open
+	if oldOpenPrice <= 0 {
+		oldOpenPrice = newKline.Open
 	}
 
 	closeDir := closeDirection(position.Direction)
@@ -48,7 +46,7 @@ func (h *RolloverHandler) CheckAndExecute(
 		OpenDate:   position.OpenDate,
 	})
 
-	newOpenPrice := decimal.NewFromFloat(newKline.Open)
+	newOpenPrice := newKline.Open
 
 	var newDir backtest.Direction
 

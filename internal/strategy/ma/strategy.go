@@ -4,15 +4,13 @@ import (
 	"fmt"
 
 	"futures-backtest/internal/backtest"
-
-	"github.com/shopspring/decimal"
 )
 
 type MAStrategy struct {
 	stateManagers map[string]*StateManager
 	shortPeriod   int
 	longPeriod    int
-	leverage      decimal.Decimal
+	leverage      float64
 
 	position *backtest.SignalPosition
 
@@ -34,7 +32,7 @@ func NewMAStrategy(shortPeriod, longPeriod int, leverage float64) *MAStrategy {
 		stateManagers: make(map[string]*StateManager),
 		shortPeriod:   shortPeriod,
 		longPeriod:    longPeriod,
-		leverage:      decimal.NewFromFloat(leverage),
+		leverage:      leverage,
 	}
 }
 
@@ -86,7 +84,7 @@ func (s *MAStrategy) ProcessKLine(kline backtest.KLineWithContract) []backtest.T
 				SignalDate: kline.Date,
 				Symbol:     kline.Symbol,
 				Direction:  closeDir,
-				Price:      decimal.NewFromFloat(kline.Open),
+				Price:      kline.Open,
 				Leverage:   s.leverage,
 				SignalType: "ma",
 				OpenPrice:  s.position.OpenPrice,
@@ -100,7 +98,7 @@ func (s *MAStrategy) ProcessKLine(kline backtest.KLineWithContract) []backtest.T
 			SignalDate: kline.Date,
 			Symbol:     kline.Symbol,
 			Direction:  s.pendingSignal.Direction,
-			Price:      decimal.NewFromFloat(kline.Open),
+			Price:      kline.Open,
 			Leverage:   s.leverage,
 			SignalType: "ma",
 		}
@@ -109,7 +107,7 @@ func (s *MAStrategy) ProcessKLine(kline backtest.KLineWithContract) []backtest.T
 		s.position = &backtest.SignalPosition{
 			Symbol:    kline.Symbol,
 			Direction: s.pendingSignal.Direction,
-			OpenPrice: decimal.NewFromFloat(kline.Open),
+			OpenPrice: kline.Open,
 			OpenDate:  kline.Date,
 			Leverage:  s.leverage,
 		}
@@ -126,9 +124,9 @@ func (s *MAStrategy) ProcessKLine(kline backtest.KLineWithContract) []backtest.T
 	shortMA, longMA := sm.GetMAs()
 	prevShortMA, prevLongMA := sm.GetPrevMAs()
 
-	if prevShortMA.IsPositive() && prevLongMA.IsPositive() && shortMA.IsPositive() && longMA.IsPositive() {
-		goldenCross := prevShortMA.LessThanOrEqual(prevLongMA) && shortMA.GreaterThan(longMA)
-		deathCross := prevShortMA.GreaterThanOrEqual(prevLongMA) && shortMA.LessThan(longMA)
+	if prevShortMA > 0 && prevLongMA > 0 && shortMA > 0 && longMA > 0 {
+		goldenCross := prevShortMA <= prevLongMA && shortMA > longMA
+		deathCross := prevShortMA >= prevLongMA && shortMA < longMA
 
 		if goldenCross {
 			s.pendingSignal = &PendingSignal{
@@ -157,19 +155,19 @@ func (s *MAStrategy) StateForSymbol(symbol string) MAState {
 	return s.getOrCreateStateManager(symbol).State()
 }
 
-func (s *MAStrategy) GetMAs() (shortMA, longMA decimal.Decimal) {
+func (s *MAStrategy) GetMAs() (shortMA, longMA float64) {
 	if s.currentSymbol == "" {
-		return decimal.Zero, decimal.Zero
+		return 0, 0
 	}
 	return s.stateManagers[s.currentSymbol].GetMAs()
 }
 
-func (s *MAStrategy) GetMAsForSymbol(symbol string) (shortMA, longMA decimal.Decimal) {
+func (s *MAStrategy) GetMAsForSymbol(symbol string) (shortMA, longMA float64) {
 	return s.getOrCreateStateManager(symbol).GetMAs()
 }
 
 func (s *MAStrategy) SimulateTrading(klines []backtest.KLineWithContract) *backtest.SignalPosition {
-	simStrategy := NewMAStrategy(s.shortPeriod, s.longPeriod, s.leverage.InexactFloat64())
+	simStrategy := NewMAStrategy(s.shortPeriod, s.longPeriod, s.leverage)
 
 	for _, kl := range klines {
 		simStrategy.ProcessKLine(kl)
@@ -179,5 +177,5 @@ func (s *MAStrategy) SimulateTrading(klines []backtest.KLineWithContract) *backt
 }
 
 func (s *MAStrategy) String() string {
-	return fmt.Sprintf("MA策略(短期=%d, 长期=%d, 杠杆=%s)", s.shortPeriod, s.longPeriod, s.leverage.StringFixed(2))
+	return fmt.Sprintf("MA策略(短期=%d, 长期=%d, 杠杆=%.2f)", s.shortPeriod, s.longPeriod, s.leverage)
 }

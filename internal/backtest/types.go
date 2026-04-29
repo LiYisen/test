@@ -1,7 +1,5 @@
 package backtest
 
-import "github.com/shopspring/decimal"
-
 type Direction int
 
 const (
@@ -30,67 +28,67 @@ func (d Direction) String() string {
 }
 
 type TradeSignal struct {
-	SignalDate string          `json:"signal_date"`
-	Price      decimal.Decimal `json:"price"`
-	Direction  Direction       `json:"direction"`
-	Leverage   decimal.Decimal `json:"leverage"`
-	Quantity   decimal.Decimal `json:"quantity"`
-	SignalType string          `json:"signal_type"`
-	Symbol     string          `json:"symbol"`
-	OpenPrice  decimal.Decimal `json:"open_price"`
-	OpenDate   string          `json:"open_date"`
+	SignalDate string    `json:"signal_date"`
+	Price      float64   `json:"price"`
+	Direction  Direction `json:"direction"`
+	Leverage   float64   `json:"leverage"`
+	Quantity   float64   `json:"quantity"`
+	SignalType string    `json:"signal_type"`
+	Symbol     string    `json:"symbol"`
+	OpenPrice  float64   `json:"open_price"`
+	OpenDate   string    `json:"open_date"`
 }
 
 type SignalPosition struct {
-	Symbol    string          `json:"symbol"`
-	Direction Direction       `json:"direction"`
-	OpenPrice decimal.Decimal `json:"open_price"`
-	OpenDate  string          `json:"open_date"`
-	Leverage  decimal.Decimal `json:"leverage"`
+	Symbol    string    `json:"symbol"`
+	Direction Direction `json:"direction"`
+	OpenPrice float64   `json:"open_price"`
+	OpenDate  string    `json:"open_date"`
+	Leverage  float64   `json:"leverage"`
 }
 
 type Position struct {
-	Symbol       string          `json:"symbol"`
-	Direction    Direction       `json:"direction"`
-	OpenPrice    decimal.Decimal `json:"open_price"`
-	OpenDate     string          `json:"open_date"`
-	Quantity     decimal.Decimal `json:"quantity"`
-	Leverage     decimal.Decimal `json:"leverage"`
-	CurrentPrice decimal.Decimal `json:"current_price"`
+	Symbol       string    `json:"symbol"`
+	Direction    Direction `json:"direction"`
+	OpenPrice    float64   `json:"open_price"`
+	OpenDate     string    `json:"open_date"`
+	Quantity     float64   `json:"quantity"`
+	Leverage     float64   `json:"leverage"`
+	CurrentPrice float64   `json:"current_price"`
 }
 
 type Account struct {
-	Cash         decimal.Decimal        `json:"cash"`
-	TotalValue   decimal.Decimal        `json:"total_value"`
-	Positions    []Position             `json:"positions"`
+	Cash         float64               `json:"cash"`
+	TotalValue   float64               `json:"total_value"`
+	Positions    []Position            `json:"positions"`
 	DailyRecords map[string]DailyRecord `json:"daily_records"`
 }
 
 type DailyRecord struct {
-	Date        string          `json:"date"`
-	Position    decimal.Decimal `json:"position"`
-	Cash        decimal.Decimal `json:"cash"`
-	TotalValue  decimal.Decimal `json:"total_value"`
-	PnL         decimal.Decimal `json:"pnl"`
-	DailyReturn decimal.Decimal `json:"daily_return"`
+	Date        string  `json:"date"`
+	Position    float64 `json:"position"`
+	Cash        float64 `json:"cash"`
+	TotalValue  float64 `json:"total_value"`
+	PnL         float64 `json:"pnl"`
+	DailyReturn float64 `json:"daily_return"`
 }
 
 type StateRecord struct {
-	Date       string          `json:"date"`
-	Symbol     string          `json:"symbol"`
-	Position   string          `json:"position"`
-	ClosePrice float64         `json:"close_price"`
+	Date       string  `json:"date"`
+	Symbol     string  `json:"symbol"`
+	Position   string  `json:"position"`
+	ClosePrice float64 `json:"close_price"`
 }
 
 type TradeRecord struct {
-	Date       string          `json:"date"`
-	Symbol     string          `json:"symbol"`
-	Direction  Direction       `json:"direction"`
-	Price      decimal.Decimal `json:"price"`
-	Quantity   decimal.Decimal `json:"quantity"`
-	Leverage   decimal.Decimal `json:"leverage"`
-	PnL        decimal.Decimal `json:"pnl"`
-	TotalValue decimal.Decimal `json:"total_value"`
+	Date       string    `json:"date"`
+	Symbol     string    `json:"symbol"`
+	Direction  Direction `json:"direction"`
+	Price      float64   `json:"price"`
+	Quantity   float64   `json:"quantity"`
+	Leverage   float64   `json:"leverage"`
+	PnL        float64   `json:"pnl"`
+	TotalValue float64   `json:"total_value"`
 }
 
 type KLineData struct {

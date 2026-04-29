@@ -3,26 +3,24 @@ package backtest
 import (
 	"fmt"
 	"math"
-
-	"github.com/shopspring/decimal"
 )
 
 type Statistics struct {
-	TotalReturn      decimal.Decimal
-	AnnualReturn     decimal.Decimal
-	MaxDrawdown      decimal.Decimal
-	MaxDrawdownRatio decimal.Decimal
-	WinRate          decimal.Decimal
-	ProfitLossRatio  decimal.Decimal
+	TotalReturn      float64
+	AnnualReturn     float64
+	MaxDrawdown      float64
+	MaxDrawdownRatio float64
+	WinRate          float64
+	ProfitLossRatio  float64
 	WinningTrades    int
 	LosingTrades     int
 	TotalTrades      int
-	TotalWin         decimal.Decimal
-	TotalLoss        decimal.Decimal
-	SharpeRatio      decimal.Decimal
-	CalmarRatio      decimal.Decimal
+	TotalWin         float64
+	TotalLoss        float64
+	SharpeRatio      float64
+	CalmarRatio      float64
 	TradingDays      int
-	FinalValue       decimal.Decimal
+	FinalValue       float64
 }
 
 func CalculateStatistics(dailyRecords []DailyRecord, positionReturns []PositionReturn) Statistics {
@@ -35,15 +33,13 @@ func CalculateStatistics(dailyRecords []DailyRecord, positionReturns []PositionR
 	}
 
 	stats.FinalValue = dailyRecords[len(dailyRecords)-1].TotalValue
-	decOne := decimal.NewFromInt(1)
-	stats.TotalReturn = stats.FinalValue.Sub(decOne)
+	stats.TotalReturn = stats.FinalValue - 1
 
 	if len(dailyRecords) > 1 {
 		tradingDays := float64(len(dailyRecords))
 		years := tradingDays / 250.0
 		if years > 0 {
-			fv, _ := stats.FinalValue.Float64()
-			stats.AnnualReturn = decimal.NewFromFloat(math.Pow(fv, 1/years) - 1)
+			stats.AnnualReturn = math.Pow(stats.FinalValue, 1/years) - 1
 		}
 	}
 
@@ -57,43 +53,43 @@ func CalculateStatistics(dailyRecords []DailyRecord, positionReturns []PositionR
 	stats.TotalLoss = totalLoss
 
 	if stats.TotalTrades > 0 {
-		stats.WinRate = decimal.NewFromInt(int64(winCount)).Div(decimal.NewFromInt(int64(stats.TotalTrades)))
+		stats.WinRate = float64(winCount) / float64(stats.TotalTrades)
 	}
 
 	if winCount > 0 && lossCount > 0 {
-		avgWin := totalWin.Div(decimal.NewFromInt(int64(winCount)))
-		avgLoss := totalLoss.Div(decimal.NewFromInt(int64(lossCount)))
-		if !avgLoss.IsZero() {
-			stats.ProfitLossRatio = avgWin.Div(avgLoss)
+		avgWin := totalWin / float64(winCount)
+		avgLoss := totalLoss / float64(lossCount)
+		if avgLoss != 0 {
+			stats.ProfitLossRatio = avgWin / avgLoss
 		}
 	}
 
 	stats.SharpeRatio = calculateSharpeRatio(dailyRecords)
 
-	if !stats.MaxDrawdownRatio.IsZero() {
-		stats.CalmarRatio = stats.AnnualReturn.Div(stats.MaxDrawdownRatio)
+	if stats.MaxDrawdownRatio != 0 {
+		stats.CalmarRatio = stats.AnnualReturn / stats.MaxDrawdownRatio
 	}
 
 	return stats
 }
 
-func calculateMaxDrawdown(records []DailyRecord) (decimal.Decimal, decimal.Decimal) {
+func calculateMaxDrawdown(records []DailyRecord) (float64, float64) {
 	if len(records) == 0 {
-		return decimal.Zero, decimal.Zero
+		return 0, 0
 	}
 
-	peak := decimal.NewFromInt(1)
-	maxDD := decimal.Zero
-	maxDDPercent := decimal.Zero
+	peak := 1.0
+	maxDD := 0.0
+	maxDDPercent := 0.0
 
 	for _, rec := range records {
-		if rec.TotalValue.GreaterThan(peak) {
+		if rec.TotalValue > peak {
 			peak = rec.TotalValue
 		}
-		drawdown := peak.Sub(rec.TotalValue)
-		drawdownPercent := drawdown.Div(peak)
+		drawdown := peak - rec.TotalValue
+		drawdownPercent := drawdown / peak
 
-		if drawdown.GreaterThan(maxDD) {
+		if drawdown > maxDD {
 			maxDD = drawdown
 			maxDDPercent = drawdownPercent
 		}
@@ -102,30 +98,28 @@ func calculateMaxDrawdown(records []DailyRecord) (decimal.Decimal, decimal.Decim
 	return maxDD, maxDDPercent
 }
 
-func calculatePositionStats(returns []PositionReturn) (winCount, lossCount int, totalWin, totalLoss decimal.Decimal) {
-	totalWin = decimal.Zero
-	totalLoss = decimal.Zero
+func calculatePositionStats(returns []PositionReturn) (winCount, lossCount int, totalWin, totalLoss float64) {
 	for _, pr := range returns {
-		pnl := pr.Return.Mul(pr.Leverage)
-		if pnl.IsPositive() {
+		pnl := pr.Return * pr.Leverage
+		if pnl > 0 {
 			winCount++
-			totalWin = totalWin.Add(pnl)
-		} else if pnl.IsNegative() {
+			totalWin += pnl
+		} else if pnl < 0 {
 			lossCount++
-			totalLoss = totalLoss.Add(pnl.Abs())
+			totalLoss += -pnl
 		}
 	}
 	return
 }
 
-func calculateSharpeRatio(records []DailyRecord) decimal.Decimal {
+func calculateSharpeRatio(records []DailyRecord) float64 {
 	if len(records) < 2 {
-		return decimal.Zero
+		return 0
 	}
 
 	var sum, sqSum float64
 	for _, rec := range records {
-		r, _ := rec.DailyReturn.Float64()
+		r := rec.DailyReturn
 		sum += r
 		sqSum += r * r
 	}
@@ -134,25 +128,26 @@ func calculateSharpeRatio(records []DailyRecord) decimal.Decimal {
 	variance := sqSum/float64(len(records)) - mean*mean
 
 	if variance <= 0 {
-		return decimal.Zero
+		return 0
 	}
 
 	stdDev := math.Sqrt(variance)
 	if stdDev == 0 {
-		return decimal.Zero
+		return 0
 	}
 
 	sharpe := mean / stdDev
 	if math.IsInf(sharpe, 0) || math.IsNaN(sharpe) {
-		return decimal.Zero
+		return 0
 	}
 
-	return decimal.NewFromFloat(sharpe * math.Sqrt(250))
+	return sharpe * math.Sqrt(250)
 }
 
-func formatSignedPercent(d decimal.Decimal, places int32) string {
-	s := d.Mul(decimal.NewFromInt(100)).StringFixed(places)
-	if d.IsPositive() {
+func formatSignedPercent(f float64, places int) string {
+	pct := f * 100
+	s := fmt.Sprintf("%.[1]*f%%", places, pct)
+	if f > 0 {
 		return "+" + s
 	}
 	return s
@@ -161,28 +156,28 @@ func formatSignedPercent(d decimal.Decimal, places int32) string {
 func (s Statistics) Print() {
 	fmt.Println("========== 策略统计 ==========")
 	fmt.Printf("  %-20s: %d 天\n", "交易天数", s.TradingDays)
-	fmt.Printf("  %-20s: %s%%\n", "总收益率", s.TotalReturn.Mul(decimal.NewFromInt(100)).StringFixed(2))
-	fmt.Printf("  %-20s: %s%%\n", "年化收益率", s.AnnualReturn.Mul(decimal.NewFromInt(100)).StringFixed(2))
-	fmt.Printf("  %-20s: %s%%\n", "最大回撤", s.MaxDrawdown.Mul(decimal.NewFromInt(100)).StringFixed(2))
-	fmt.Printf("  %-20s: %s%%\n", "最大回撤比例", s.MaxDrawdownRatio.Mul(decimal.NewFromInt(100)).StringFixed(2))
-	fmt.Printf("  %-20s: %s\n", "夏普比率", s.SharpeRatio.StringFixed(2))
-	fmt.Printf("  %-20s: %s\n", "卡尔马比率", s.CalmarRatio.StringFixed(2))
+	fmt.Printf("  %-20s: %.2f%%\n", "总收益率", s.TotalReturn*100)
+	fmt.Printf("  %-20s: %.2f%%\n", "年化收益率", s.AnnualReturn*100)
+	fmt.Printf("  %-20s: %.2f%%\n", "最大回撤", s.MaxDrawdown*100)
+	fmt.Printf("  %-20s: %.2f%%\n", "最大回撤比例", s.MaxDrawdownRatio*100)
+	fmt.Printf("  %-20s: %.2f\n", "夏普比率", s.SharpeRatio)
+	fmt.Printf("  %-20s: %.2f\n", "卡尔马比率", s.CalmarRatio)
 	fmt.Printf("  %-20s: %d 次\n", "交易次数", s.TotalTrades)
 	fmt.Printf("  %-20s: %d 次\n", "盈利次数", s.WinningTrades)
 	fmt.Printf("  %-20s: %d 次\n", "亏损次数", s.LosingTrades)
-	fmt.Printf("  %-20s: %s%%\n", "胜率", s.WinRate.Mul(decimal.NewFromInt(100)).StringFixed(2))
-	fmt.Printf("  %-20s: %s\n", "盈亏比", s.ProfitLossRatio.StringFixed(2))
-	fmt.Printf("  %-20s: %s\n", "最终净值", s.FinalValue.StringFixed(4))
+	fmt.Printf("  %-20s: %.2f%%\n", "胜率", s.WinRate*100)
+	fmt.Printf("  %-20s: %.2f\n", "盈亏比", s.ProfitLossRatio)
+	fmt.Printf("  %-20s: %.4f\n", "最终净值", s.FinalValue)
 }
 
 type DailyDetail struct {
 	Date         string
 	Symbol       string
 	Direction    Direction
-	OpenPrice    decimal.Decimal
-	Close        decimal.Decimal
-	DailyReturn  decimal.Decimal
-	CumReturn    decimal.Decimal
+	OpenPrice    float64
+	Close        float64
+	DailyReturn  float64
+	CumReturn    float64
 	SignalAction string
 }
 
@@ -199,13 +194,12 @@ func GenerateDailyDetails(dailyRecords []DailyRecord, signals []TradeSignal, kli
 
 	var details []DailyDetail
 	var currentPos *TradeSignal
-	decOne := decimal.NewFromInt(1)
 
 	for _, rec := range dailyRecords {
 		detail := DailyDetail{
 			Date:        rec.Date,
 			DailyReturn: rec.DailyReturn,
-			CumReturn:   rec.TotalValue.Sub(decOne),
+			CumReturn:   rec.TotalValue - 1,
 		}
 
 		if dominant, ok := dominantMap[rec.Date]; ok {
@@ -213,7 +207,7 @@ func GenerateDailyDetails(dailyRecords []DailyRecord, signals []TradeSignal, kli
 		}
 
 		if kline, ok := klineMap[rec.Date+"|"+detail.Symbol]; ok {
-			detail.Close = decimal.NewFromFloat(kline.Close)
+			detail.Close = kline.Close
 		}
 
 		if daySignals, ok := signalsByDate[rec.Date]; ok {
@@ -267,11 +261,11 @@ func PrintDailyDetails(details []DailyDetail) {
 
 	for _, d := range details {
 		directionStr := d.SignalAction
-		if d.OpenPrice.IsZero() {
+		if d.OpenPrice == 0 {
 			directionStr = "无持仓"
 		}
-		fmt.Printf("%-12s %-8s %-10s %-10s %-12s %s%% %s%%\n",
-			d.Date, d.Symbol, directionStr, d.OpenPrice.StringFixed(2), d.Close.StringFixed(2), formatSignedPercent(d.DailyReturn, 4), formatSignedPercent(d.CumReturn, 4))
+		fmt.Printf("%-12s %-8s %-10s %-10.2f %-12.2f %s %s\n",
+			d.Date, d.Symbol, directionStr, d.OpenPrice, d.Close, formatSignedPercent(d.DailyReturn, 4), formatSignedPercent(d.CumReturn, 4))
 	}
 }
 
@@ -283,7 +277,7 @@ func PrintPositionReturns(returns []PositionReturn) {
 
 	for _, pr := range returns {
 		directionStr := formatDirection(pr.Direction)
-		fmt.Printf("%-12s %-12s %-8s %-10s %-10s %-10s %-10s %s%%\n",
-			pr.OpenDate, pr.CloseDate, pr.Symbol, directionStr, pr.OpenPrice.StringFixed(2), pr.ClosePrice.StringFixed(2), pr.Leverage.StringFixed(2), formatSignedPercent(pr.Return, 4))
+		fmt.Printf("%-12s %-12s %-8s %-10s %-10.2f %-10.2f %-10.2f %s\n",
+			pr.OpenDate, pr.CloseDate, pr.Symbol, directionStr, pr.OpenPrice, pr.ClosePrice, pr.Leverage, formatSignedPercent(pr.Return, 4))
 	}
 }

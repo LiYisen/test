@@ -1,6 +1,7 @@
 package backtest
 
 import (
+	"fmt"
 	"sort"
 )
 
@@ -215,7 +216,7 @@ func (r *DefaultStateRecorder) RecordState(date string, kline KLineWithContract,
 	if position == nil {
 		posDesc = "无持仓"
 	} else {
-		posDesc = position.Direction.String() + " " + position.Symbol + "@" + position.OpenPrice.StringFixed(2)
+		posDesc = position.Direction.String() + " " + position.Symbol + fmt.Sprintf("@%.2f", position.OpenPrice)
 	}
 	r.records = append(r.records, StateRecord{
 		Date:       date,

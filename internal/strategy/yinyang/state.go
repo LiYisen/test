@@ -4,8 +4,6 @@ import (
 	"fmt"
 
 	"futures-backtest/internal/backtest"
-
-	"github.com/shopspring/decimal"
 )
 
 type StateManager struct {
@@ -43,7 +41,7 @@ func (r *YinYangStateRecorder) RecordState(date string, kline backtest.KLineWith
 	if position == nil {
 		posDesc = "无持仓"
 	} else {
-		posDesc = fmt.Sprintf("%s %s@%s", position.Direction.String(), position.Symbol, position.OpenPrice.StringFixed(2))
+		posDesc = fmt.Sprintf("%s %s@%.2f", position.Direction.String(), position.Symbol, position.OpenPrice)
 	}
 
 	r.records = append(r.records, backtest.StateRecord{
@@ -60,16 +58,14 @@ func (r *YinYangStateRecorder) GetStateHistory() []backtest.StateRecord {
 
 func (m *StateManager) Update(kline backtest.KLineData) {
 	isYang := m.determineDirection(kline)
-	m.updateState(isYang, decimal.NewFromFloat(kline.High), decimal.NewFromFloat(kline.Low))
+	m.updateState(isYang, kline.High, kline.Low)
 }
 
 func (m *StateManager) determineDirection(kline backtest.KLineData) bool {
-	close := decimal.NewFromFloat(kline.Close)
-	open := decimal.NewFromFloat(kline.Open)
-	if close.GreaterThan(open) {
+	if kline.Close > kline.Open {
 		return true
 	}
-	if close.LessThan(open) {
+	if kline.Close < kline.Open {
 		return false
 	}
 	if !m.hasData {
@@ -78,7 +74,7 @@ func (m *StateManager) determineDirection(kline backtest.KLineData) bool {
 	return m.lastDir
 }
 
-func (m *StateManager) updateState(isYang bool, high, low decimal.Decimal) {
+func (m *StateManager) updateState(isYang bool, high, low float64) {
 	m.prevState = m.state
 	m.prevDir = m.lastDir
 	m.currentIsYang = isYang
@@ -115,22 +111,22 @@ func (m *StateManager) updateState(isYang bool, high, low decimal.Decimal) {
 	m.lastDir = isYang
 }
 
-func mergeElement(elem *YinYangElement, high, low decimal.Decimal) {
+func mergeElement(elem *YinYangElement, high, low float64) {
 	if !elem.IsValid {
 		elem.High = high
 		elem.Low = low
 		elem.IsValid = true
 		return
 	}
-	if high.GreaterThan(elem.High) {
+	if high > elem.High {
 		elem.High = high
 	}
-	if low.LessThan(elem.Low) {
+	if low < elem.Low {
 		elem.Low = low
 	}
 }
 
-func (m *StateManager) GenerateTempState(isYangOverride bool, high, low decimal.Decimal) {
+func (m *StateManager) GenerateTempState(isYangOverride bool, high, low float64) {
 	m.tempState = m.state
 
 	if m.currentIsYang != m.prevDir {

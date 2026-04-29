@@ -6,11 +6,8 @@ import (
 	"sort"
 
 	"futures-backtest/internal/backtest"
-
-	"github.com/shopspring/decimal"
 )
 
-// PortfolioResult 组合回测结果
 type PortfolioResult struct {
 	IDs             []string                  `json:"ids"`
 	Symbols         []string                  `json:"symbols"`
@@ -19,56 +16,49 @@ type PortfolioResult struct {
 	Statistics      PortfolioStatistics       `json:"statistics"`
 }
 
-// PortfolioDailyRecord 组合每日记录
 type PortfolioDailyRecord struct {
-	Date        string                     `json:"date"`
-	TotalValue  decimal.Decimal            `json:"total_value"`
-	DailyReturn decimal.Decimal            `json:"daily_return"`
-	PnL         decimal.Decimal            `json:"pnl"`
-	Components  map[string]decimal.Decimal `json:"components"`
+	Date        string            `json:"date"`
+	TotalValue  float64           `json:"total_value"`
+	DailyReturn float64           `json:"daily_return"`
+	PnL         float64           `json:"pnl"`
+	Components  map[string]float64 `json:"components"`
 }
 
-// PortfolioPositionReturn 组合持仓收益
 type PortfolioPositionReturn struct {
-	OpenDate   string          `json:"open_date"`
-	CloseDate  string          `json:"close_date"`
-	Symbol     string          `json:"symbol"`
-	Direction  string          `json:"direction"`
-	OpenPrice  decimal.Decimal `json:"open_price"`
-	ClosePrice decimal.Decimal `json:"close_price"`
-	Leverage   decimal.Decimal `json:"leverage"`
-	Return     decimal.Decimal `json:"return"`
-	Weight     decimal.Decimal `json:"weight"`
+	OpenDate   string  `json:"open_date"`
+	CloseDate  string  `json:"close_date"`
+	Symbol     string  `json:"symbol"`
+	Direction  string  `json:"direction"`
+	OpenPrice  float64 `json:"open_price"`
+	ClosePrice float64 `json:"close_price"`
+	Leverage   float64 `json:"leverage"`
+	Return     float64 `json:"return"`
+	Weight     float64 `json:"weight"`
 }
 
-// PortfolioStatistics 组合统计指标
 type PortfolioStatistics struct {
-	TotalReturn      decimal.Decimal `json:"total_return"`
-	AnnualReturn     decimal.Decimal `json:"annual_return"`
-	MaxDrawdown      decimal.Decimal `json:"max_drawdown"`
-	MaxDrawdownRatio decimal.Decimal `json:"max_drawdown_ratio"`
-	WinRate          decimal.Decimal `json:"win_rate"`
-	ProfitLossRatio  decimal.Decimal `json:"profit_loss_ratio"`
-	WinningTrades    int             `json:"winning_trades"`
-	LosingTrades     int             `json:"losing_trades"`
-	TotalTrades      int             `json:"total_trades"`
-	TotalWin         decimal.Decimal `json:"total_win"`
-	TotalLoss        decimal.Decimal `json:"total_loss"`
-	SharpeRatio      decimal.Decimal `json:"sharpe_ratio"`
-	CalmarRatio      decimal.Decimal `json:"calmar_ratio"`
-	TradingDays      int             `json:"trading_days"`
-	FinalValue       decimal.Decimal `json:"final_value"`
+	TotalReturn      float64 `json:"total_return"`
+	AnnualReturn     float64 `json:"annual_return"`
+	MaxDrawdown      float64 `json:"max_drawdown"`
+	MaxDrawdownRatio float64 `json:"max_drawdown_ratio"`
+	WinRate          float64 `json:"win_rate"`
+	ProfitLossRatio  float64 `json:"profit_loss_ratio"`
+	WinningTrades    int     `json:"winning_trades"`
+	LosingTrades     int     `json:"losing_trades"`
+	TotalTrades      int     `json:"total_trades"`
+	TotalWin         float64 `json:"total_win"`
+	TotalLoss        float64 `json:"total_loss"`
+	SharpeRatio      float64 `json:"sharpe_ratio"`
+	CalmarRatio      float64 `json:"calmar_ratio"`
+	TradingDays      int     `json:"trading_days"`
+	FinalValue       float64 `json:"final_value"`
 }
 
-// CalculatePortfolio 计算多品种组合回测
-// 假设各品种等权重分配资金，独立计算后再汇总
-// 注意：调用此函数前应已通过 FilterResultsByDateRange 过滤到共同日期范围
 func CalculatePortfolio(results []*ResultData) (*PortfolioResult, error) {
 	if len(results) == 0 {
 		return nil, fmt.Errorf("至少需要选择一个回测结果")
 	}
 
-	// 收集所有日期
 	dateSet := make(map[string]bool)
 	for _, r := range results {
 		for _, dr := range r.DailyRecords {
@@ -76,50 +66,41 @@ func CalculatePortfolio(results []*ResultData) (*PortfolioResult, error) {
 		}
 	}
 
-	// 排序日期
 	var dates []string
 	for d := range dateSet {
 		dates = append(dates, d)
 	}
 	sort.Strings(dates)
 
-	decOne := decimal.NewFromInt(1)
-
-	// 为每个结果构建日期到每日记录的映射，并计算归一化基准值
 	dailyMaps := make([]map[string]backtest.DailyRecord, len(results))
-	baseValues := make([]decimal.Decimal, len(results))
+	baseValues := make([]float64, len(results))
 	for i, r := range results {
 		dailyMaps[i] = make(map[string]backtest.DailyRecord)
 		for _, dr := range r.DailyRecords {
 			dailyMaps[i][dr.Date] = dr
 		}
-		// 找到第一条记录作为基准值，用于归一化
 		if len(r.DailyRecords) > 0 {
 			baseValues[i] = r.DailyRecords[0].TotalValue
 		} else {
-			baseValues[i] = decOne
+			baseValues[i] = 1.0
 		}
 	}
 
-	// 等权重
-	weight := decimal.NewFromInt(1).Div(decimal.NewFromInt(int64(len(results))))
+	weight := 1.0 / float64(len(results))
 
-	// 计算组合每日记录
 	var portfolioRecords []PortfolioDailyRecord
-	var cumulativeValue = decOne
+	var cumulativeValue = 1.0
 
 	for _, date := range dates {
-		// 当日各品种的日收益率
-		var dailyReturnSum decimal.Decimal
-		components := make(map[string]decimal.Decimal)
+		var dailyReturnSum float64
+		components := make(map[string]float64)
 		validCount := 0
 
 		for i, r := range results {
 			if dr, ok := dailyMaps[i][date]; ok {
-				dailyReturnSum = dailyReturnSum.Add(dr.DailyReturn)
-				// 归一化净值：将净值归一化到共同日期范围的起点
-				if !baseValues[i].IsZero() {
-					components[r.Request.Symbol] = dr.TotalValue.Div(baseValues[i])
+				dailyReturnSum += dr.DailyReturn
+				if baseValues[i] != 0 {
+					components[r.Request.Symbol] = dr.TotalValue / baseValues[i]
 				} else {
 					components[r.Request.Symbol] = dr.TotalValue
 				}
@@ -131,23 +112,19 @@ func CalculatePortfolio(results []*ResultData) (*PortfolioResult, error) {
 			continue
 		}
 
-		// 组合日收益率 = 各品种日收益率的等权平均
-		avgDailyReturn := dailyReturnSum.Div(decimal.NewFromInt(int64(validCount)))
-
-		// 累计净值
-		cumulativeValue = cumulativeValue.Mul(decOne.Add(avgDailyReturn))
+		avgDailyReturn := dailyReturnSum / float64(validCount)
+		cumulativeValue = cumulativeValue * (1 + avgDailyReturn)
 
 		record := PortfolioDailyRecord{
 			Date:        date,
 			TotalValue:  cumulativeValue,
 			DailyReturn: avgDailyReturn,
-			PnL:         cumulativeValue.Sub(decOne),
+			PnL:         cumulativeValue - 1,
 			Components:  components,
 		}
 		portfolioRecords = append(portfolioRecords, record)
 	}
 
-	// 收集所有持仓收益记录
 	var allReturns []PortfolioPositionReturn
 	for _, r := range results {
 		for _, pr := range r.PositionReturns {
@@ -165,10 +142,8 @@ func CalculatePortfolio(results []*ResultData) (*PortfolioResult, error) {
 		}
 	}
 
-	// 计算统计指标
 	stats := calculatePortfolioStatistics(portfolioRecords, allReturns)
 
-	// 提取ID和品种列表
 	var ids, symbols []string
 	for _, r := range results {
 		ids = append(ids, r.ID)
@@ -194,15 +169,12 @@ func calculatePortfolioStatistics(records []PortfolioDailyRecord, returns []Port
 	}
 
 	stats.FinalValue = records[len(records)-1].TotalValue
-	decOne := decimal.NewFromInt(1)
-	stats.TotalReturn = stats.FinalValue.Sub(decOne)
+	stats.TotalReturn = stats.FinalValue - 1
 
 	if len(records) > 1 {
-		tradingDays := float64(len(records))
-		years := tradingDays / 250.0
+		years := float64(len(records)) / 250.0
 		if years > 0 {
-			fv, _ := stats.FinalValue.Float64()
-			stats.AnnualReturn = decimal.NewFromFloat(math.Pow(fv, 1/years) - 1)
+			stats.AnnualReturn = math.Pow(stats.FinalValue, 1/years) - 1
 		}
 	}
 
@@ -216,43 +188,43 @@ func calculatePortfolioStatistics(records []PortfolioDailyRecord, returns []Port
 	stats.TotalLoss = totalLoss
 
 	if stats.TotalTrades > 0 {
-		stats.WinRate = decimal.NewFromInt(int64(winCount)).Div(decimal.NewFromInt(int64(stats.TotalTrades)))
+		stats.WinRate = float64(winCount) / float64(stats.TotalTrades)
 	}
 
 	if winCount > 0 && lossCount > 0 {
-		avgWin := totalWin.Div(decimal.NewFromInt(int64(winCount)))
-		avgLoss := totalLoss.Div(decimal.NewFromInt(int64(lossCount)))
-		if !avgLoss.IsZero() {
-			stats.ProfitLossRatio = avgWin.Div(avgLoss)
+		avgWin := totalWin / float64(winCount)
+		avgLoss := totalLoss / float64(lossCount)
+		if avgLoss != 0 {
+			stats.ProfitLossRatio = avgWin / avgLoss
 		}
 	}
 
 	stats.SharpeRatio = calculatePortfolioSharpeRatio(records)
 
-	if !stats.MaxDrawdownRatio.IsZero() {
-		stats.CalmarRatio = stats.AnnualReturn.Div(stats.MaxDrawdownRatio)
+	if stats.MaxDrawdownRatio != 0 {
+		stats.CalmarRatio = stats.AnnualReturn / stats.MaxDrawdownRatio
 	}
 
 	return stats
 }
 
-func calculatePortfolioMaxDrawdown(records []PortfolioDailyRecord) (decimal.Decimal, decimal.Decimal) {
+func calculatePortfolioMaxDrawdown(records []PortfolioDailyRecord) (float64, float64) {
 	if len(records) == 0 {
-		return decimal.Zero, decimal.Zero
+		return 0, 0
 	}
 
-	peak := decimal.NewFromInt(1)
-	maxDD := decimal.Zero
-	maxDDPercent := decimal.Zero
+	peak := 1.0
+	maxDD := 0.0
+	maxDDPercent := 0.0
 
 	for _, rec := range records {
-		if rec.TotalValue.GreaterThan(peak) {
+		if rec.TotalValue > peak {
 			peak = rec.TotalValue
 		}
-		drawdown := peak.Sub(rec.TotalValue)
-		drawdownPercent := drawdown.Div(peak)
+		drawdown := peak - rec.TotalValue
+		drawdownPercent := drawdown / peak
 
-		if drawdown.GreaterThan(maxDD) {
+		if drawdown > maxDD {
 			maxDD = drawdown
 			maxDDPercent = drawdownPercent
 		}
@@ -261,30 +233,28 @@ func calculatePortfolioMaxDrawdown(records []PortfolioDailyRecord) (decimal.Deci
 	return maxDD, maxDDPercent
 }
 
-func calculatePortfolioPositionStats(returns []PortfolioPositionReturn) (winCount, lossCount int, totalWin, totalLoss decimal.Decimal) {
-	totalWin = decimal.Zero
-	totalLoss = decimal.Zero
+func calculatePortfolioPositionStats(returns []PortfolioPositionReturn) (winCount, lossCount int, totalWin, totalLoss float64) {
 	for _, pr := range returns {
-		pnl := pr.Return.Mul(pr.Leverage).Mul(pr.Weight)
-		if pnl.IsPositive() {
+		pnl := pr.Return * pr.Leverage * pr.Weight
+		if pnl > 0 {
 			winCount++
-			totalWin = totalWin.Add(pnl)
-		} else if pnl.IsNegative() {
+			totalWin += pnl
+		} else if pnl < 0 {
 			lossCount++
-			totalLoss = totalLoss.Add(pnl.Abs())
+			totalLoss += math.Abs(pnl)
 		}
 	}
 	return
 }
 
-func calculatePortfolioSharpeRatio(records []PortfolioDailyRecord) decimal.Decimal {
+func calculatePortfolioSharpeRatio(records []PortfolioDailyRecord) float64 {
 	if len(records) < 2 {
-		return decimal.Zero
+		return 0
 	}
 
 	var sum, sqSum float64
 	for _, rec := range records {
-		r, _ := rec.DailyReturn.Float64()
+		r := rec.DailyReturn
 		sum += r
 		sqSum += r * r
 	}
@@ -293,23 +263,22 @@ func calculatePortfolioSharpeRatio(records []PortfolioDailyRecord) decimal.Decim
 	variance := sqSum/float64(len(records)) - mean*mean
 
 	if variance <= 0 {
-		return decimal.Zero
+		return 0
 	}
 
 	stdDev := math.Sqrt(variance)
 	if stdDev == 0 {
-		return decimal.Zero
+		return 0
 	}
 
 	sharpe := mean / stdDev
 	if math.IsInf(sharpe, 0) || math.IsNaN(sharpe) {
-		return decimal.Zero
+		return 0
 	}
 
-	return decimal.NewFromFloat(sharpe * math.Sqrt(250))
+	return sharpe * math.Sqrt(250)
 }
 
-// CheckTimeOverlap 检查多个回测结果的时间段是否有重叠
 func CheckTimeOverlap(results []*ResultData) (bool, string) {
 	if len(results) < 2 {
 		return true, ""
@@ -319,17 +288,14 @@ func CheckTimeOverlap(results []*ResultData) (bool, string) {
 		for j := i + 1; j < len(results); j++ {
 			r1, r2 := results[i], results[j]
 
-			// 检查是否完全相同
 			if r1.Request.StartDate == r2.Request.StartDate &&
 				r1.Request.EndDate == r2.Request.EndDate {
-				continue // 完全相同是允许的
+				continue
 			}
 
-			// 检查是否有交集
 			start1, end1 := r1.Request.StartDate, r1.Request.EndDate
 			start2, end2 := r2.Request.StartDate, r2.Request.EndDate
 
-			// 将日期字符串转换为可比较的格式
 			if !isDateOverlap(start1, end1, start2, end2) {
 				return false, fmt.Sprintf("%s(%s~%s) 与 %s(%s~%s) 时间段不重叠",
 					r1.Request.Symbol, start1, end1,
@@ -342,12 +308,9 @@ func CheckTimeOverlap(results []*ResultData) (bool, string) {
 }
 
 func isDateOverlap(start1, end1, start2, end2 string) bool {
-	// 简单字符串比较，假设格式为 YYYYMMDD
-	// 重叠条件：start1 <= end2 且 start2 <= end1
 	return start1 <= end2 && start2 <= end1
 }
 
-// GetCommonDateRange 获取多个回测结果的共同日期范围
 func GetCommonDateRange(results []*ResultData) (string, string) {
 	if len(results) == 0 {
 		return "", ""
@@ -368,8 +331,6 @@ func GetCommonDateRange(results []*ResultData) (string, string) {
 	return commonStart, commonEnd
 }
 
-// FilterResultsByDateRange 根据共同日期范围过滤结果
-// startDate/endDate 格式为 YYYYMMDD，DailyRecord.Date 格式为 YYYY-MM-DD
 func FilterResultsByDateRange(results []*ResultData, startDate, endDate string) []*ResultData {
 	startFormatted := formatDateForComparison(startDate)
 	endFormatted := formatDateForComparison(endDate)
@@ -394,7 +355,6 @@ func FilterResultsByDateRange(results []*ResultData, startDate, endDate string) 
 	return filtered
 }
 
-// formatDateForComparison 将 YYYYMMDD 格式转换为 YYYY-MM-DD 格式
 func formatDateForComparison(date string) string {
 	if len(date) == 8 {
 		return date[:4] + "-" + date[4:6] + "-" + date[6:8]

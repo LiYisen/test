@@ -2,8 +2,6 @@ package fund
 
 import (
 	"futures-backtest/internal/backtest"
-
-	"github.com/shopspring/decimal"
 )
 
 type FundConfig struct {
@@ -18,7 +16,7 @@ type FundConfig struct {
 type PositionConfig struct {
 	Symbol   string                 `json:"symbol"`
 	Strategy string                 `json:"strategy"`
-	Weight   decimal.Decimal        `json:"weight"`
+	Weight   float64                `json:"weight"`
 	Params   map[string]interface{} `json:"params"`
 }
 
@@ -37,32 +35,32 @@ type FundResult struct {
 type PositionResult struct {
 	Symbol       string                 `json:"symbol"`
 	Strategy     string                 `json:"strategy"`
-	Weight       decimal.Decimal        `json:"weight"`
+	Weight       float64                `json:"weight"`
 	Signals      []backtest.TradeSignal `json:"signals"`
 	DailyRecords []backtest.DailyRecord `json:"daily_records"`
 	Statistics   backtest.Statistics    `json:"statistics"`
 }
 
 type FundDailyRecord struct {
-	Date        string                     `json:"date"`
-	TotalValue  decimal.Decimal            `json:"total_value"`
-	DailyReturn decimal.Decimal            `json:"daily_return"`
-	PnL         decimal.Decimal            `json:"pnl"`
-	Components  map[string]decimal.Decimal `json:"components"`
+	Date        string             `json:"date"`
+	TotalValue  float64            `json:"total_value"`
+	DailyReturn float64            `json:"daily_return"`
+	PnL         float64            `json:"pnl"`
+	Components  map[string]float64 `json:"components"`
 }
 
 type FundStatistics struct {
-	TotalReturn      decimal.Decimal `json:"total_return"`
-	AnnualReturn     decimal.Decimal `json:"annual_return"`
-	MaxDrawdown      decimal.Decimal `json:"max_drawdown"`
-	MaxDrawdownRatio decimal.Decimal `json:"max_drawdown_ratio"`
-	SharpeRatio      decimal.Decimal `json:"sharpe_ratio"`
-	CalmarRatio      decimal.Decimal `json:"calmar_ratio"`
-	WinRate          decimal.Decimal `json:"win_rate"`
-	TradingDays      int             `json:"trading_days"`
-	WinningTrades    int             `json:"winning_trades"`
-	LosingTrades     int             `json:"losing_trades"`
-	TotalTrades      int             `json:"total_trades"`
+	TotalReturn      float64 `json:"total_return"`
+	AnnualReturn     float64 `json:"annual_return"`
+	MaxDrawdown      float64 `json:"max_drawdown"`
+	MaxDrawdownRatio float64 `json:"max_drawdown_ratio"`
+	SharpeRatio      float64 `json:"sharpe_ratio"`
+	CalmarRatio      float64 `json:"calmar_ratio"`
+	WinRate          float64 `json:"win_rate"`
+	TradingDays      int     `json:"trading_days"`
+	WinningTrades    int     `json:"winning_trades"`
+	LosingTrades     int     `json:"losing_trades"`
+	TotalTrades      int     `json:"total_trades"`
 }
 
 type FundBacktestRequest struct {

@@ -2,38 +2,36 @@ package ma
 
 import (
 	"futures-backtest/internal/backtest"
-
-	"github.com/shopspring/decimal"
 )
 
 type MAState struct {
-	ShortMA decimal.Decimal `json:"short_ma"`
-	LongMA  decimal.Decimal `json:"long_ma"`
+	ShortMA float64 `json:"short_ma"`
+	LongMA  float64 `json:"long_ma"`
 }
 
 type StateManager struct {
 	shortPeriod int
 	longPeriod  int
 
-	prices []decimal.Decimal
+	prices []float64
 
-	shortMA decimal.Decimal
-	longMA  decimal.Decimal
+	shortMA float64
+	longMA  float64
 
-	prevShortMA decimal.Decimal
-	prevLongMA  decimal.Decimal
+	prevShortMA float64
+	prevLongMA  float64
 }
 
 func NewStateManager(shortPeriod, longPeriod int) *StateManager {
 	return &StateManager{
 		shortPeriod: shortPeriod,
 		longPeriod:  longPeriod,
-		prices:      make([]decimal.Decimal, 0),
+		prices:      make([]float64, 0),
 	}
 }
 
 func (m *StateManager) Update(kline backtest.KLineData) {
-	close := decimal.NewFromFloat(kline.Close)
+	close := kline.Close
 
 	m.prevShortMA = m.shortMA
 	m.prevLongMA = m.longMA
@@ -41,19 +39,19 @@ func (m *StateManager) Update(kline backtest.KLineData) {
 	m.prices = append(m.prices, close)
 
 	if len(m.prices) >= m.shortPeriod {
-		var sum decimal.Decimal
+		var sum float64
 		for i := len(m.prices) - m.shortPeriod; i < len(m.prices); i++ {
-			sum = sum.Add(m.prices[i])
+			sum += m.prices[i]
 		}
-		m.shortMA = sum.Div(decimal.NewFromInt(int64(m.shortPeriod)))
+		m.shortMA = sum / float64(m.shortPeriod)
 	}
 
 	if len(m.prices) >= m.longPeriod {
-		var sum decimal.Decimal
+		var sum float64
 		for i := len(m.prices) - m.longPeriod; i < len(m.prices); i++ {
-			sum = sum.Add(m.prices[i])
+			sum += m.prices[i]
 		}
-		m.longMA = sum.Div(decimal.NewFromInt(int64(m.longPeriod)))
+		m.longMA = sum / float64(m.longPeriod)
 	}
 
 	if len(m.prices) > m.longPeriod*2 {
@@ -65,11 +63,11 @@ func (m *StateManager) IsReady() bool {
 	return len(m.prices) >= m.longPeriod
 }
 
-func (m *StateManager) GetMAs() (shortMA, longMA decimal.Decimal) {
+func (m *StateManager) GetMAs() (shortMA, longMA float64) {
 	return m.shortMA, m.longMA
 }
 
-func (m *StateManager) GetPrevMAs() (shortMA, longMA decimal.Decimal) {
+func (m *StateManager) GetPrevMAs() (shortMA, longMA float64) {
 	return m.prevShortMA, m.prevLongMA
 }
 

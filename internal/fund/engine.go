@@ -11,8 +11,6 @@ import (
 	"futures-backtest/internal/backtest"
 	"futures-backtest/internal/data"
 	"futures-backtest/internal/strategy"
-
-	"github.com/shopspring/decimal"
 )
 
 type ProgressFunc func(progress int, step string)
@@ -41,7 +39,7 @@ func (e *FundEngine) reportProgress(progress int, step string) {
 type positionBacktestResult struct {
 	Symbol       string
 	Strategy     string
-	Weight       decimal.Decimal
+	Weight       float64
 	Signals      []backtest.TradeSignal
 	DailyRecords []backtest.DailyRecord
 	Statistics   backtest.Statistics
@@ -283,7 +281,7 @@ func (e *FundEngine) mergeDailyRecords(results []*positionBacktestResult) []Fund
 	sort.Strings(dates)
 
 	dailyMaps := make([]map[string]backtest.DailyRecord, len(results))
-	baseValues := make([]decimal.Decimal, len(results))
+	baseValues := make([]float64, len(results))
 	for i, r := range results {
 		dailyMaps[i] = make(map[string]backtest.DailyRecord)
 		for _, dr := range r.DailyRecords {
@@ -292,42 +290,41 @@ func (e *FundEngine) mergeDailyRecords(results []*positionBacktestResult) []Fund
 		if len(r.DailyRecords) > 0 {
 			baseValues[i] = r.DailyRecords[0].TotalValue
 		} else {
-			baseValues[i] = decimal.NewFromInt(1)
+			baseValues[i] = 1
 		}
 	}
 
-	decOne := decimal.NewFromInt(1)
 	var fundRecords []FundDailyRecord
-	var cumulativeValue = decOne
+	cumulativeValue := 1.0
 
 	for _, date := range dates {
-		var weightedReturn decimal.Decimal
-		components := make(map[string]decimal.Decimal)
-		totalWeight := decimal.Zero
+		var weightedReturn float64
+		components := make(map[string]float64)
+		totalWeight := 0.0
 
 		for i, r := range results {
 			if dr, ok := dailyMaps[i][date]; ok {
-				weightedReturn = weightedReturn.Add(dr.DailyReturn.Mul(r.Weight))
-				if !baseValues[i].IsZero() {
-					components[r.Symbol] = dr.TotalValue.Div(baseValues[i])
+				weightedReturn += dr.DailyReturn * r.Weight
+				if baseValues[i] != 0 {
+					components[r.Symbol] = dr.TotalValue / baseValues[i]
 				} else {
 					components[r.Symbol] = dr.TotalValue
 				}
-				totalWeight = totalWeight.Add(r.Weight)
+				totalWeight += r.Weight
 			}
 		}
 
-		if totalWeight.IsZero() {
+		if totalWeight == 0 {
 			continue
 		}
 
-		cumulativeValue = cumulativeValue.Mul(decOne.Add(weightedReturn))
+		cumulativeValue = cumulativeValue * (1 + weightedReturn)
 
 		record := FundDailyRecord{
 			Date:        date,
 			TotalValue:  cumulativeValue,
 			DailyReturn: weightedReturn,
-			PnL:         cumulativeValue.Sub(decOne),
+			PnL:         cumulativeValue - 1,
 			Components:  components,
 		}
 		fundRecords = append(fundRecords, record)
@@ -345,19 +342,17 @@ func (e *FundEngine) calculateFundStatistics(records []FundDailyRecord, results 
 		return stats
 	}
 
-	decOne := decimal.NewFromInt(1)
-	stats.TotalReturn = records[len(records)-1].TotalValue.Sub(decOne)
+	stats.TotalReturn = records[len(records)-1].TotalValue - 1
 
 	if len(records) > 1 {
 		tradingDays := float64(len(records))
 		years := tradingDays / 250.0
 		if years > 0 {
-			fv, _ := records[len(records)-1].TotalValue.Float64()
-			stats.AnnualReturn = decimal.NewFromFloat(math.Pow(fv, 1/years) - 1)
+			stats.AnnualReturn = math.Pow(records[len(records)-1].TotalValue, 1/years) - 1
 		}
 	}
 
-	stats.MaxDrawdown, stats.MaxDrawdownRatio = calculateMaxDrawdown(records)
+	stats.MaxDrawdown, stats.MaxDrawdownRatio = calculateFundMaxDrawdown(records)
 
 	winCount, lossCount := 0, 0
 	for _, r := range results {
@@ -369,35 +364,35 @@ func (e *FundEngine) calculateFundStatistics(records []FundDailyRecord, results 
 	stats.TotalTrades = winCount + lossCount
 
 	if stats.TotalTrades > 0 {
-		stats.WinRate = decimal.NewFromInt(int64(winCount)).Div(decimal.NewFromInt(int64(stats.TotalTrades)))
+		stats.WinRate = float64(winCount) / float64(stats.TotalTrades)
 	}
 
-	stats.SharpeRatio = calculateSharpeRatio(records)
+	stats.SharpeRatio = calculateFundSharpeRatio(records)
 
-	if !stats.MaxDrawdownRatio.IsZero() {
-		stats.CalmarRatio = stats.AnnualReturn.Div(stats.MaxDrawdownRatio)
+	if stats.MaxDrawdownRatio != 0 {
+		stats.CalmarRatio = stats.AnnualReturn / stats.MaxDrawdownRatio
 	}
 
 	return stats
 }
 
-func calculateMaxDrawdown(records []FundDailyRecord) (decimal.Decimal, decimal.Decimal) {
+func calculateFundMaxDrawdown(records []FundDailyRecord) (float64, float64) {
 	if len(records) == 0 {
-		return decimal.Zero, decimal.Zero
+		return 0, 0
 	}
 
-	peak := decimal.NewFromInt(1)
-	maxDD := decimal.Zero
-	maxDDPercent := decimal.Zero
+	peak := 1.0
+	maxDD := 0.0
+	maxDDPercent := 0.0
 
 	for _, rec := range records {
-		if rec.TotalValue.GreaterThan(peak) {
+		if rec.TotalValue > peak {
 			peak = rec.TotalValue
 		}
-		drawdown := peak.Sub(rec.TotalValue)
-		drawdownPercent := drawdown.Div(peak)
+		drawdown := peak - rec.TotalValue
+		drawdownPercent := drawdown / peak
 
-		if drawdown.GreaterThan(maxDD) {
+		if drawdown > maxDD {
 			maxDD = drawdown
 			maxDDPercent = drawdownPercent
 		}
@@ -406,14 +401,14 @@ func calculateMaxDrawdown(records []FundDailyRecord) (decimal.Decimal, decimal.D
 	return maxDD, maxDDPercent
 }
 
-func calculateSharpeRatio(records []FundDailyRecord) decimal.Decimal {
+func calculateFundSharpeRatio(records []FundDailyRecord) float64 {
 	if len(records) < 2 {
-		return decimal.Zero
+		return 0
 	}
 
 	var sum, sqSum float64
 	for _, rec := range records {
-		r, _ := rec.DailyReturn.Float64()
+		r := rec.DailyReturn
 		sum += r
 		sqSum += r * r
 	}
@@ -422,20 +417,20 @@ func calculateSharpeRatio(records []FundDailyRecord) decimal.Decimal {
 	variance := sqSum/float64(len(records)) - mean*mean
 
 	if variance <= 0 {
-		return decimal.Zero
+		return 0
 	}
 
 	stdDev := math.Sqrt(variance)
 	if stdDev == 0 {
-		return decimal.Zero
+		return 0
 	}
 
 	sharpe := mean / stdDev
 	if math.IsInf(sharpe, 0) || math.IsNaN(sharpe) {
-		return decimal.Zero
+		return 0
 	}
 
-	return decimal.NewFromFloat(sharpe * math.Sqrt(250))
+	return sharpe * math.Sqrt(250)
 }
 
 func calculateWarmupStartDate(calendar []data.TradeDate, startDate string, requiredDays int) string {

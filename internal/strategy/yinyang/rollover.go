@@ -1,9 +1,9 @@
 package yinyang
 
 import (
-	"futures-backtest/internal/backtest"
+	"math"
 
-	"github.com/shopspring/decimal"
+	"futures-backtest/internal/backtest"
 )
 
 type RolloverHandler struct {
@@ -35,9 +35,9 @@ func (h *RolloverHandler) CheckAndExecute(
 
 	var signals []backtest.TradeSignal
 
-	oldOpenPrice := decimal.NewFromFloat(oldKline.Open)
-	if !oldOpenPrice.IsPositive() {
-		oldOpenPrice = decimal.NewFromFloat(newKline.Open)
+	oldOpenPrice := oldKline.Open
+	if oldOpenPrice <= 0 {
+		oldOpenPrice = newKline.Open
 	}
 
 	closeDir := closeDirection(position.Direction)
@@ -52,12 +52,12 @@ func (h *RolloverHandler) CheckAndExecute(
 		OpenDate:   position.OpenDate,
 	})
 
-	newOpenPrice := decimal.NewFromFloat(newKline.Open)
+	newOpenPrice := newKline.Open
 
 	newState := h.strategy.StateForSymbol(currentSymbol)
 
 	var newDir backtest.Direction
-	var leverage decimal.Decimal
+	var leverage float64
 
 	simPosition := h.strategy.SimulateTrading(newSymbolKlines)
 	if simPosition != nil {
@@ -66,28 +66,28 @@ func (h *RolloverHandler) CheckAndExecute(
 		sm := h.strategy.getOrCreateStateManager(currentSymbol)
 		currentIsYang := sm.CurrentIsYang()
 
-		var longPrice, shortPrice decimal.Decimal
+		var longPrice, shortPrice float64
 
 		if currentIsYang {
 			if newState.Yang2.IsValid {
-				longPrice = decimal.Max(newState.Yin1.High, newState.Yang2.High)
+				longPrice = math.Max(newState.Yin1.High, newState.Yang2.High)
 			} else {
 				longPrice = newState.Yin1.High
 			}
-			shortPrice = decimal.Min(newState.Yin1.Low, newState.Yang1.Low)
+			shortPrice = math.Min(newState.Yin1.Low, newState.Yang1.Low)
 		} else {
-			longPrice = decimal.Max(newState.Yin1.High, newState.Yang1.High)
+			longPrice = math.Max(newState.Yin1.High, newState.Yang1.High)
 			if newState.Yin2.IsValid {
-				shortPrice = decimal.Min(newState.Yang1.Low, newState.Yin2.Low)
+				shortPrice = math.Min(newState.Yang1.Low, newState.Yin2.Low)
 			} else {
 				shortPrice = newState.Yang1.Low
 			}
 		}
 
-		longDistance := newOpenPrice.Sub(longPrice).Abs()
-		shortDistance := newOpenPrice.Sub(shortPrice).Abs()
+		longDistance := math.Abs(newOpenPrice - longPrice)
+		shortDistance := math.Abs(newOpenPrice - shortPrice)
 
-		if longDistance.LessThanOrEqual(shortDistance) {
+		if longDistance <= shortDistance {
 			newDir = backtest.Buy
 		} else {
 			newDir = backtest.Sell
