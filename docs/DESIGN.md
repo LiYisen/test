@@ -179,8 +179,8 @@ func init() {
 **核心类型**:
 ```go
 type YinYangElement struct {
-    High    decimal.Decimal
-    Low     decimal.Decimal
+    High    float64
+    Low     float64
     IsValid bool
 }
 
@@ -318,13 +318,13 @@ const (
 
 type TradeSignal struct {
     SignalDate string
-    Price      decimal.Decimal
+    Price      float64
     Direction  Direction
-    Leverage   decimal.Decimal
-    Quantity   decimal.Decimal
+    Leverage   float64
+    Quantity   float64
     SignalType string
     Symbol     string
-    OpenPrice  decimal.Decimal
+    OpenPrice  float64
     OpenDate   string
 }
 ```
@@ -335,19 +335,19 @@ type TradeSignal struct {
 type SignalPosition struct {
     Symbol    string
     Direction Direction
-    OpenPrice decimal.Decimal
+    OpenPrice float64
     OpenDate  string
-    Leverage  decimal.Decimal
+    Leverage  float64
 }
 
 type Position struct {
     Symbol       string
     Direction    Direction
-    OpenPrice    decimal.Decimal
+    OpenPrice    float64
     OpenDate     string
-    Quantity     decimal.Decimal
-    Leverage     decimal.Decimal
-    CurrentPrice decimal.Decimal
+    Quantity     float64
+    Leverage     float64
+    CurrentPrice float64
 }
 ```
 
@@ -356,11 +356,11 @@ type Position struct {
 ```go
 type DailyRecord struct {
     Date        string
-    Position    decimal.Decimal
-    Cash        decimal.Decimal
-    TotalValue  decimal.Decimal
-    PnL         decimal.Decimal
-    DailyReturn decimal.Decimal
+    Position    float64
+    Cash        float64
+    TotalValue  float64
+    PnL         float64
+    DailyReturn float64
 }
 
 type PositionReturn struct {
@@ -368,10 +368,10 @@ type PositionReturn struct {
     CloseDate  string
     Symbol     string
     Direction  Direction
-    OpenPrice  decimal.Decimal
-    ClosePrice decimal.Decimal
-    Leverage   decimal.Decimal
-    Return     decimal.Decimal
+    OpenPrice  float64
+    ClosePrice float64
+    Leverage   float64
+    Return     float64
 }
 ```
 
@@ -442,7 +442,7 @@ type FundConfig struct {
 type FundPosition struct {
     Symbol   string                 `json:"symbol"`
     Strategy string                 `json:"strategy"`
-    Weight   decimal.Decimal        `json:"weight"`
+    Weight   float64                `json:"weight"`
     Params   map[string]interface{} `json:"params"`
 }
 ```
@@ -467,7 +467,7 @@ ret/
 - 品种回测使用 goroutine 并发执行，结果通过 buffered channel 收集。
 - 基金配置加载使用 `sync.Once` 确保只加载一次。
 - 配置读写使用 `sync.RWMutex` 保护。
-- 年化收益计算使用 `decimal.Decimal.Pow` 避免浮点精度问题。
+- 年化收益计算使用 `math.Pow` 进行幂运算。
 
 ## 11. Web前端架构
 
@@ -545,4 +545,4 @@ T+1日开盘：
 
 ---
 
-**最后更新**: 2026-04-28
+**最后更新**: 2026-04-29
