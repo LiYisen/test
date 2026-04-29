@@ -10,7 +10,7 @@
         {
           "symbol": "RB",
           "strategy": "yinyang",
-          "weight": "0.5",
+          "weight": 0.5,
           "params": {
             "leverage": 3
           }
@@ -18,7 +18,7 @@
         {
           "symbol": "TA",
           "strategy": "yinyang",
-          "weight": "0.5",
+          "weight": 0.5,
           "params": {
             "leverage": 2
           }
@@ -35,7 +35,7 @@
         {
           "symbol": "V",
           "strategy": "yinyang",
-          "weight": "0.5",
+          "weight": 0.5,
           "params": {
             "leverage": 3
           }
@@ -43,7 +43,7 @@
         {
           "symbol": "EB",
           "strategy": "yinyang",
-          "weight": "0.5",
+          "weight": 0.5,
           "params": {
             "leverage": 3
           }

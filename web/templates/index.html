@@ -738,7 +738,10 @@
         // ==================== Fund ====================
         function fundLoadList() {
             var container = document.getElementById('fundList');
-            fetch('/api/funds').then(function(r) { return r.json(); }).then(function(data) { fundList = data.funds || []; fundRenderList(); }).catch(function(err) { container.classList.remove('loading'); container.innerHTML = '<div class="data-error">加载基金列表失败: ' + escapeHtml(err.message) + '</div>'; });
+            fetch('/api/funds').then(function(r) {
+                if (!r.ok) return r.json().then(function(d) { throw new Error(d.error || '服务器错误'); });
+                return r.json();
+            }).then(function(data) { fundList = data.funds || []; fundRenderList(); }).catch(function(err) { container.classList.remove('loading'); container.innerHTML = '<div class="data-error">加载基金列表失败: ' + escapeHtml(err.message) + '</div>'; });
         }
 
         function fundRenderList() {

@@ -15,43 +15,37 @@ type FundConfigFile struct {
 var (
 	configMu    sync.RWMutex
 	fundConfigs map[string]*FundConfig
-	configOnce  sync.Once
-	configErr   error
 )
 
 func LoadFundConfig(configPath string) error {
-	configOnce.Do(func() {
-		file, err := os.Open(configPath)
-		if err != nil {
-			if os.IsNotExist(err) {
-				configMu.Lock()
-				fundConfigs = make(map[string]*FundConfig)
-				configMu.Unlock()
-				configErr = nil
-				return
-			}
-			configErr = fmt.Errorf("打开基金配置文件失败: %w", err)
-			return
+	file, err := os.Open(configPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			configMu.Lock()
+			fundConfigs = make(map[string]*FundConfig)
+			configMu.Unlock()
+			return nil
 		}
-		defer file.Close()
+		return fmt.Errorf("打开基金配置文件失败: %w", err)
+	}
+	defer file.Close()
 
-		var configFile FundConfigFile
-		if err := json.NewDecoder(file).Decode(&configFile); err != nil {
-			configErr = fmt.Errorf("解析基金配置文件失败: %w", err)
-			return
-		}
+	var configFile FundConfigFile
+	if err := json.NewDecoder(file).Decode(&configFile); err != nil {
+		return fmt.Errorf("解析基金配置文件失败: %w", err)
+	}
 
-		configs := make(map[string]*FundConfig)
-		for i := range configFile.Funds {
-			fund := &configFile.Funds[i]
-			configs[fund.ID] = fund
-		}
+	configs := make(map[string]*FundConfig)
+	for i := range configFile.Funds {
+		fund := &configFile.Funds[i]
+		configs[fund.ID] = fund
+	}
 
-		configMu.Lock()
-		fundConfigs = configs
-		configMu.Unlock()
-	})
-	return configErr
+	configMu.Lock()
+	fundConfigs = configs
+	configMu.Unlock()
+
+	return nil
 }
 
 func GetFundConfig(fundID string) (*FundConfig, error) {
