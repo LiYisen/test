@@ -29,7 +29,10 @@ type Server struct {
 func NewServer() *Server {
 	gin.SetMode(gin.ReleaseMode)
 	r := gin.New()
-	r.Use(gin.Recovery())
+	r.Use(gin.RecoveryWithWriter(gin.DefaultErrorWriter, func(c *gin.Context, err interface{}) {
+		log.Printf("[PANIC] 捕获到panic: %v", err)
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("服务器内部错误: %v", err)})
+	}))
 	r.Use(corsMiddleware())
 
 	executor := pyexec.NewDefaultExecutor()
@@ -47,6 +50,15 @@ func NewServer() *Server {
 	LoadConfig()
 
 	s.setupRoutes()
+
+	go func() {
+		ticker := time.NewTicker(10 * time.Minute)
+		defer ticker.Stop()
+		for range ticker.C {
+			fund.GetTaskManager().CleanupOldTasks(30 * time.Minute)
+		}
+	}()
+
 	return s
 }
 
@@ -87,6 +99,11 @@ func (s *Server) setupRoutes() {
 		api.GET("/funds/:id", s.handleGetFund)
 		api.POST("/funds", s.handleCreateFund)
 		api.POST("/funds/backtest", s.handleFundBacktest)
+		api.GET("/funds/backtest/progress/:task_id", s.handleFundBacktestProgress)
+		api.POST("/funds/test", func(c *gin.Context) {
+			log.Printf("[测试] 收到POST请求")
+			c.JSON(http.StatusOK, gin.H{"message": "POST test OK"})
+		})
 		api.GET("/funds/results", s.handleListFundResults)
 		api.GET("/funds/results/:fund_id/:result_id", s.handleGetFundResult)
 		api.DELETE("/funds/results/:fund_id/:result_id", s.handleDeleteFundResult)
@@ -856,6 +873,9 @@ func (s *Server) handleCreateFund(c *gin.Context) {
 }
 
 func (s *Server) handleFundBacktest(c *gin.Context) {
+	fmt.Println("=== handleFundBacktest called ===")
+	log.Printf("[基金回测] 收到请求: Method=%s, Path=%s", c.Request.Method, c.Request.URL.Path)
+
 	var req fund.FundBacktestRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		log.Printf("[基金回测] 请求解析失败: %v", err)
@@ -866,11 +886,13 @@ func (s *Server) handleFundBacktest(c *gin.Context) {
 	log.Printf("[基金回测] 开始: fund_id=%s, start=%s, end=%s", req.FundID, req.StartDate, req.EndDate)
 
 	fundConfigPath := filepath.Join("config", "funds.json")
+	log.Printf("[基金回测] 加载配置: %s", fundConfigPath)
 	if err := fund.LoadFundConfig(fundConfigPath); err != nil {
 		log.Printf("[基金回测] 加载配置失败: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "加载基金配置失败: " + err.Error()})
 		return
 	}
+	log.Printf("[基金回测] 配置加载成功")
 
 	fundConfig, err := fund.GetFundConfig(req.FundID)
 	if err != nil {
@@ -881,32 +903,80 @@ func (s *Server) handleFundBacktest(c *gin.Context) {
 
 	log.Printf("[基金回测] 配置OK: %s, 品种数=%d", fundConfig.Name, len(fundConfig.Positions))
 
-	engine := fund.NewFundEngine(s.dataManager)
-	result, err := engine.RunBacktest(*fundConfig, req.StartDate, req.EndDate)
-	if err != nil {
-		log.Printf("[基金回测] 执行失败: %v", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
+	taskManager := fund.GetTaskManager()
+	task := taskManager.CreateTask(req.FundID, fundConfig.Name, req.StartDate, req.EndDate)
+	task.TotalSteps = len(fundConfig.Positions)
 
-	log.Printf("[基金回测] 执行成功: 交易天数=%d, resultID=%s", result.Statistics.TradingDays, result.ID)
+	go s.executeFundBacktest(task.ID, *fundConfig, req.StartDate, req.EndDate)
 
-	if err := fund.SaveFundResult(result, s.retDir); err != nil {
-		log.Printf("[基金回测] 保存失败: %v", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "保存结果失败: " + err.Error()})
-		return
-	}
-
-	log.Printf("[基金回测] 保存成功")
+	log.Printf("[基金回测] 创建异步任务: taskID=%s", task.ID)
 
 	c.JSON(http.StatusOK, gin.H{
-		"success":      true,
-		"id":           result.ID,
-		"fund_id":      result.FundID,
-		"fund_name":    result.FundName,
-		"trading_days": result.Statistics.TradingDays,
-		"statistics":   convertFundStatistics(result.Statistics),
+		"async":   true,
+		"task_id": task.ID,
+		"message": "回测任务已创建",
 	})
+}
+
+func (s *Server) executeFundBacktest(taskID string, config fund.FundConfig, startDate, endDate string) {
+	taskManager := fund.GetTaskManager()
+
+	engine := fund.NewFundEngine(s.dataManager)
+	engine.SetProgressCallback(func(progress int, step string) {
+		taskManager.UpdateProgress(taskID, progress, step)
+	})
+
+	log.Printf("[基金回测] 异步任务开始执行: taskID=%s", taskID)
+
+	result, err := engine.RunBacktest(config, startDate, endDate)
+	if err != nil {
+		log.Printf("[基金回测] 异步任务执行失败: taskID=%s, err=%v", taskID, err)
+		taskManager.FailTask(taskID, err.Error())
+		return
+	}
+
+	log.Printf("[基金回测] 异步任务执行成功: taskID=%s, 交易天数=%d, resultID=%s", taskID, result.Statistics.TradingDays, result.ID)
+
+	if err := fund.SaveFundResult(result, s.retDir); err != nil {
+		log.Printf("[基金回测] 异步任务保存失败: taskID=%s, err=%v", taskID, err)
+		taskManager.FailTask(taskID, "保存结果失败: "+err.Error())
+		return
+	}
+
+	taskManager.CompleteTask(taskID, result.ID)
+	log.Printf("[基金回测] 异步任务完成: taskID=%s", taskID)
+}
+
+func (s *Server) handleFundBacktestProgress(c *gin.Context) {
+	taskID := c.Param("task_id")
+
+	taskManager := fund.GetTaskManager()
+	task, ok := taskManager.GetTask(taskID)
+	if !ok {
+		c.JSON(http.StatusNotFound, gin.H{"error": "任务不存在"})
+		return
+	}
+
+	resp := gin.H{
+		"task_id":      task.ID,
+		"fund_id":      task.FundID,
+		"fund_name":    task.FundName,
+		"status":       string(task.Status),
+		"progress":     task.Progress,
+		"current_step": task.CurrentStep,
+		"message":      task.Message,
+		"total_steps":  task.TotalSteps,
+	}
+
+	if task.Status == fund.TaskStatusCompleted {
+		resp["result_id"] = task.ResultID
+	}
+
+	if task.Status == fund.TaskStatusFailed {
+		resp["error"] = task.Error
+	}
+
+	c.JSON(http.StatusOK, resp)
 }
 
 func (s *Server) handleListFundResults(c *gin.Context) {

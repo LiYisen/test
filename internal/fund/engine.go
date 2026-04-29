@@ -15,13 +15,26 @@ import (
 	"github.com/shopspring/decimal"
 )
 
+type ProgressFunc func(progress int, step string)
+
 type FundEngine struct {
 	dataManager *data.FuturesDataManager
+	onProgress  ProgressFunc
 }
 
 func NewFundEngine(dataManager *data.FuturesDataManager) *FundEngine {
 	return &FundEngine{
 		dataManager: dataManager,
+	}
+}
+
+func (e *FundEngine) SetProgressCallback(fn ProgressFunc) {
+	e.onProgress = fn
+}
+
+func (e *FundEngine) reportProgress(progress int, step string) {
+	if e.onProgress != nil {
+		e.onProgress(progress, step)
 	}
 }
 
@@ -37,6 +50,8 @@ type positionBacktestResult struct {
 
 func (e *FundEngine) RunBacktest(config FundConfig, startDate, endDate string) (*FundResult, error) {
 	log.Printf("[基金] RunBacktest开始: fund=%s, start=%s, end=%s", config.Name, startDate, endDate)
+	e.reportProgress(5, "验证配置")
+
 	if err := ValidateFundConfig(&config); err != nil {
 		return nil, fmt.Errorf("配置验证失败: %w", err)
 	}
@@ -48,15 +63,29 @@ func (e *FundEngine) RunBacktest(config FundConfig, startDate, endDate string) (
 		endDate = config.EndDate
 	}
 
+	totalPositions := len(config.Positions)
+	e.reportProgress(10, fmt.Sprintf("开始回测 %d 个品种", totalPositions))
+
+	var mu sync.Mutex
+	completedCount := 0
+
 	var wg sync.WaitGroup
 	resultsChan := make(chan *positionBacktestResult, len(config.Positions))
 
-	for _, pos := range config.Positions {
+	for i, pos := range config.Positions {
 		wg.Add(1)
-		go func(posConfig PositionConfig) {
+		go func(posConfig PositionConfig, index int) {
 			defer wg.Done()
-			resultsChan <- e.runPositionBacktest(posConfig, startDate, endDate)
-		}(pos)
+			e.reportProgress(10+int(float64(index)/float64(totalPositions)*60), fmt.Sprintf("回测品种 %s/%s", posConfig.Symbol, posConfig.Strategy))
+			result := e.runPositionBacktest(posConfig, startDate, endDate)
+			resultsChan <- result
+
+			mu.Lock()
+			completedCount++
+			progress := 10 + int(float64(completedCount)/float64(totalPositions)*60)
+			e.reportProgress(progress, fmt.Sprintf("完成品种 %s (%d/%d)", posConfig.Symbol, completedCount, totalPositions))
+			mu.Unlock()
+		}(pos, i)
 	}
 
 	go func() {
@@ -75,6 +104,8 @@ func (e *FundEngine) RunBacktest(config FundConfig, startDate, endDate string) (
 		}
 	}
 
+	e.reportProgress(75, "合并每日记录")
+
 	positionResults := make(map[string]*PositionResult)
 	for _, r := range results {
 		positionResults[r.Symbol] = &PositionResult{
@@ -89,9 +120,15 @@ func (e *FundEngine) RunBacktest(config FundConfig, startDate, endDate string) (
 
 	fundDailyRecords := e.mergeDailyRecords(results)
 
+	e.reportProgress(85, "计算基金统计")
+
 	fundStats := e.calculateFundStatistics(fundDailyRecords, results)
 
+	e.reportProgress(95, "生成结果")
+
 	resultID := fmt.Sprintf("%s_%s_%s_%d", config.ID, startDate, endDate, time.Now().Unix())
+
+	e.reportProgress(100, "回测完成")
 
 	return &FundResult{
 		ID:              resultID,
@@ -312,11 +349,11 @@ func (e *FundEngine) calculateFundStatistics(records []FundDailyRecord, results 
 	stats.TotalReturn = records[len(records)-1].TotalValue.Sub(decOne)
 
 	if len(records) > 1 {
-		tradingDays := decimal.NewFromInt(int64(len(records)))
-		years := tradingDays.Div(decimal.NewFromInt(250))
-		if years.GreaterThan(decimal.Zero) {
-			finalValue := records[len(records)-1].TotalValue
-			stats.AnnualReturn = finalValue.Pow(decimal.NewFromInt(1).Div(years)).Sub(decOne)
+		tradingDays := float64(len(records))
+		years := tradingDays / 250.0
+		if years > 0 {
+			fv, _ := records[len(records)-1].TotalValue.Float64()
+			stats.AnnualReturn = decimal.NewFromFloat(math.Pow(fv, 1/years) - 1)
 		}
 	}
 

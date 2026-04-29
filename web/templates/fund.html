@@ -755,8 +755,8 @@
 
             const btn = document.getElementById('runBtn');
             btn.disabled = true;
-            btn.textContent = '运行中...';
-            document.getElementById('message').innerHTML = '<div class="loading">正在执行回测...</div>';
+            btn.textContent = '提交中...';
+            showMessage('正在提交回测任务...', 'warning');
 
             try {
                 const response = await fetch('/api/funds/backtest', {
@@ -773,16 +773,137 @@
                 
                 if (data.error) {
                     showMessage(data.error, 'error');
+                    btn.disabled = false;
+                    btn.textContent = '运行回测';
+                } else if (data.async && data.task_id) {
+                    btn.textContent = '回测中...';
+                    pollProgress(data.task_id, btn);
                 } else {
                     showMessage('回测完成', 'success');
-                    displayResult(data);
+                    displayFullResult(data);
+                    btn.disabled = false;
+                    btn.textContent = '运行回测';
                 }
             } catch (error) {
                 showMessage('回测失败: ' + error.message, 'error');
+                btn.disabled = false;
+                btn.textContent = '运行回测';
             }
+        }
 
-            btn.disabled = false;
-            btn.textContent = '运行回测';
+        function pollProgress(taskId, btn) {
+            var maxPolls = 300;
+            var pollCount = 0;
+            var pollInterval = setInterval(function() {
+                pollCount++;
+                if (pollCount > maxPolls) {
+                    clearInterval(pollInterval);
+                    showMessage('回测超时，请稍后查看结果列表', 'error');
+                    btn.disabled = false;
+                    btn.textContent = '运行回测';
+                    return;
+                }
+                fetch('/api/funds/backtest/progress/' + taskId)
+                .then(function(r) {
+                    if (!r.ok) throw new Error('HTTP ' + r.status);
+                    return r.json();
+                })
+                .then(function(data) {
+                    if (data.error) {
+                        clearInterval(pollInterval);
+                        showMessage('查询进度失败: ' + data.error, 'error');
+                        btn.disabled = false;
+                        btn.textContent = '运行回测';
+                        return;
+                    }
+                    var progress = data.progress || 0;
+                    var step = data.current_step || '';
+                    var statusText = step + ' (' + progress + '%)';
+                    btn.textContent = statusText;
+                    showMessage('回测进度: ' + statusText, 'warning');
+
+                    if (data.status === 'completed') {
+                        clearInterval(pollInterval);
+                        showMessage('回测完成', 'success');
+                        btn.disabled = false;
+                        btn.textContent = '运行回测';
+                        if (data.result_id) {
+                            loadCompletedResult(data.result_id, data.fund_id);
+                        }
+                    } else if (data.status === 'failed') {
+                        clearInterval(pollInterval);
+                        showMessage('回测失败: ' + (data.error || '未知错误'), 'error');
+                        btn.disabled = false;
+                        btn.textContent = '运行回测';
+                    }
+                })
+                .catch(function(err) {
+                    clearInterval(pollInterval);
+                    showMessage('查询进度失败: ' + err.message, 'error');
+                    btn.disabled = false;
+                    btn.textContent = '运行回测';
+                });
+            }, 2000);
+        }
+
+        function loadCompletedResult(resultId, fundId) {
+            fetch('/api/funds/results/' + fundId + '/' + resultId)
+            .then(function(r) {
+                if (!r.ok) throw new Error('HTTP ' + r.status);
+                return r.json();
+            })
+            .then(function(data) {
+                displayFullResult(data);
+            })
+            .catch(function(err) { showMessage('加载结果失败: ' + err.message, 'error'); });
+        }
+
+        function displayFullResult(data) {
+            document.getElementById('statsCard').classList.remove('hidden');
+            document.getElementById('chartsCard').classList.remove('hidden');
+
+            const stats = data.statistics || {};
+            document.getElementById('statsGrid').innerHTML = `
+                <div class="stat-card">
+                    <div class="label">总收益率</div>
+                    <div class="value ${(parseFloat(stats.total_return) >= 0 ? 'positive' : 'negative')}">${(parseFloat(stats.total_return) * 100).toFixed(2)}%</div>
+                </div>
+                <div class="stat-card">
+                    <div class="label">年化收益</div>
+                    <div class="value ${(parseFloat(stats.annual_return) >= 0 ? 'positive' : 'negative')}">${(parseFloat(stats.annual_return) * 100).toFixed(2)}%</div>
+                </div>
+                <div class="stat-card">
+                    <div class="label">最大回撤</div>
+                    <div class="value negative">${(parseFloat(stats.max_drawdown_ratio) * 100).toFixed(2)}%</div>
+                </div>
+                <div class="stat-card">
+                    <div class="label">夏普比率</div>
+                    <div class="value">${parseFloat(stats.sharpe_ratio).toFixed(2)}</div>
+                </div>
+                <div class="stat-card">
+                    <div class="label">卡玛比率</div>
+                    <div class="value">${parseFloat(stats.calmar_ratio).toFixed(2)}</div>
+                </div>
+                <div class="stat-card">
+                    <div class="label">胜率</div>
+                    <div class="value">${(parseFloat(stats.win_rate) * 100).toFixed(1)}%</div>
+                </div>
+                <div class="stat-card">
+                    <div class="label">交易天数</div>
+                    <div class="value">${stats.trading_days}</div>
+                </div>
+                <div class="stat-card">
+                    <div class="label">总交易次数</div>
+                    <div class="value">${stats.total_trades}</div>
+                </div>
+            `;
+
+            if (data.daily_records && data.daily_records.length > 0) {
+                renderEquityChart(data.daily_records);
+            }
+            if (data.position_results && Object.keys(data.position_results).length > 0) {
+                renderPositionsTable(data.position_results);
+            }
         }
 
         function displayResult(data) {
@@ -971,13 +1092,10 @@
             
             try {
                 const response = await fetch(`/api/funds/results/${fundId}/${resultId}`);
+                if (!response.ok) throw new Error('HTTP ' + response.status);
                 const data = await response.json();
                 
-                displayResult({
-                    id: resultId,
-                    fund_id: fundId,
-                    statistics: data.statistics
-                });
+                displayFullResult(data);
             } catch (error) {
                 showMessage('加载结果失败: ' + error.message, 'error');
             }

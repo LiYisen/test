@@ -27,31 +27,23 @@
     },
     {
       "id": "fund_001",
-      "name": "太极黑色系",
+      "name": "化工基金",
       "description": "",
-      "start_date": "",
-      "end_date": "",
+      "start_date": "20250101",
+      "end_date": "20251231",
       "positions": [
         {
-          "symbol": "I",
+          "symbol": "V",
           "strategy": "yinyang",
-          "weight": "0.3",
+          "weight": "0.5",
           "params": {
             "leverage": 3
           }
         },
         {
-          "symbol": "RB",
+          "symbol": "EB",
           "strategy": "yinyang",
-          "weight": "0.4",
-          "params": {
-            "leverage": 3
-          }
-        },
-        {
-          "symbol": "JM",
-          "strategy": "yinyang",
-          "weight": "0.3",
+          "weight": "0.5",
           "params": {
             "leverage": 3
           }
