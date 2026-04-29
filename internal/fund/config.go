@@ -3,6 +3,7 @@ package fund
 import (
 	"encoding/json"
 	"fmt"
+	"math"
 	"os"
 	"path/filepath"
 	"sync"
@@ -151,7 +152,7 @@ func ValidateFundConfig(fund *FundConfig) error {
 		totalWeight += pos.Weight
 	}
 
-	if totalWeight != 1.0 {
+	if math.Abs(totalWeight-1.0) > 0.001 {
 		return fmt.Errorf("权重总和必须为1，当前总和: %.6f", totalWeight)
 	}
 

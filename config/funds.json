@@ -49,6 +49,55 @@
           }
         }
       ]
+    },
+    {
+      "id": "fund_sc_001",
+      "name": "能源化工成本领先组合",
+      "description": "",
+      "start_date": "20260101",
+      "end_date": "20260428",
+      "positions": [
+        {
+          "symbol": "SC",
+          "strategy": "yinyang",
+          "weight": 0.4,
+          "params": {
+            "leverage": 3
+          }
+        },
+        {
+          "symbol": "LU",
+          "strategy": "yinyang",
+          "weight": 0.2,
+          "params": {
+            "leverage": 3
+          }
+        },
+        {
+          "symbol": "PG",
+          "strategy": "yinyang",
+          "weight": 0.15,
+          "params": {
+            "leverage": 3
+          }
+        },
+        {
+          "symbol": "TA",
+          "strategy": "yinyang",
+          "weight": 0.15,
+          "params": {
+            "leverage": 3
+          }
+        },
+        {
+          "symbol": "BU",
+          "strategy": "yinyang",
+          "weight": 0.1,
+          "params": {
+            "leverage": 3
+          }
+        }
+      ]
     }
   ]
 }
