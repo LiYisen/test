@@ -117,7 +117,7 @@
         .selection-item { display: flex; align-items: center; padding: 10px 12px; background: var(--bg-input); border-radius: 6px; cursor: pointer; border: 1px solid var(--border-color); transition: all 0.15s; }
         .selection-item:hover { border-color: var(--border-hover); }
         .selection-item.selected { border-color: var(--accent); background: rgba(34, 211, 238, 0.05); }
-        .selection-item input { margin-right: 10px; width: 16px; height: 16px; accent-color: var(--accent); }
+        .selection-item input { margin-right: 10px; width: 16px; height: 16px; accent-color: var(--accent); pointer-events: none; }
         .selection-item .info { flex: 1; }
         .selection-item .title { font-weight: 500; color: var(--text-primary); font-size: 13px; }
         .selection-item .meta { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
@@ -632,7 +632,7 @@
             if (pfResultsData.length === 0) { list.innerHTML = '<div class="empty-state">暂无回测结果，请先运行回测</div>'; return; }
             list.innerHTML = pfResultsData.map(function(r) {
                 var parts = r.id.split('_'), symbol = parts[0] || '', strategy = parts[1] || '', startDate = parts[2] || '', endDate = parts[3] || '', leverage = parts[4] || '';
-                return '<div class="selection-item' + (pfSelectedIds.has(r.id) ? ' selected' : '') + '" onclick="pfToggleSelection(\'' + r.id + '\')"><input type="checkbox"' + (pfSelectedIds.has(r.id) ? ' checked' : '') + ' onclick="event.stopPropagation()"><div class="info"><div class="title">' + symbol + ' <span style="color:var(--text-muted);">(' + strategy + ')</span></div><div class="meta">' + startDate + ' ~ ' + endDate + ' | 杠杆: ' + leverage + '</div></div></div>';
+                return '<div class="selection-item' + (pfSelectedIds.has(r.id) ? ' selected' : '') + '" onclick="pfToggleSelection(\'' + r.id + '\')"><input type="checkbox"' + (pfSelectedIds.has(r.id) ? ' checked' : '') + '><div class="info"><div class="title">' + symbol + ' <span style="color:var(--text-muted);">(' + strategy + ')</span></div><div class="meta">' + startDate + ' ~ ' + endDate + ' | 杠杆: ' + leverage + '</div></div></div>';
             }).join('');
             pfUpdateSelectedCount();
         }
