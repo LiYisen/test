@@ -27,7 +27,6 @@ d:\code\local\test\
 │       └── main.go             # Web服务启动文件
 ├── config/                     # 配置文件（兼容保留）
 │   ├── funds.json              # 基金配置（已迁移至数据库）
-│   ├── strategies.json         # 策略配置（已迁移至数据库）
 │   └── symbols.json            # 品种配置（已迁移至数据库）
 ├── db/                         # SQLite数据库文件
 │   └── futures.db              # 主数据库（WAL模式）
@@ -54,7 +53,6 @@ d:\code\local\test\
 │   ├── db/                     # 数据库访问层
 │   │   ├── database.go         # 数据库初始化与连接管理
 │   │   ├── symbols.go          # 品种CRUD与搜索
-│   │   ├── strategies.go       # 策略CRUD与参数管理
 │   │   ├── funds.go            # 基金CRUD与持仓管理
 │   │   ├── results.go          # 回测结果/基金结果CRUD与导出
 │   │   └── migrate.go          # JSON→数据库迁移工具
@@ -174,7 +172,6 @@ func init() {
 4. 创建适配器实现类型转换
 5. 实现 `StrategyFactory` 接口的所有方法
 6. 在 `factory.go` 的 `init()` 中注册
-7. 更新 `config/strategies.json`
 
 ## 5. 策略实现
 
@@ -543,13 +540,10 @@ API 返回的数值为字符串格式（如 `"0.2195"`），前端使用 `safePa
 | 表名 | 用途 | 替代的JSON文件 |
 |------|------|---------------|
 | `symbols` | 交易品种配置 | config/symbols.json |
-| `strategies` | 策略配置 | config/strategies.json |
-| `strategy_params` | 策略参数（子表） | strategies.json中的params |
 | `funds` | 基金配置 | config/funds.json |
 | `fund_positions` | 基金持仓（子表） | funds.json中的positions |
 | `backtest_results` | 单品种回测结果 | ret/*.json |
 | `fund_results` | 基金回测结果 | ret/funding/目录 |
-| `config_meta` | 元数据键值对 | 默认策略等配置 |
 
 ### 12.4 数据访问层
 
@@ -559,7 +553,6 @@ API 返回的数值为字符串格式（如 `"0.2195"`），前端使用 `safePa
 |------|------|
 | database.go | 数据库初始化、建表、连接管理（InitDB/ResetDB/CloseDB） |
 | symbols.go | 品种CRUD、批量Upsert、搜索（支持代码/名称/拼音/交易所） |
-| strategies.go | 策略CRUD、参数管理、配置元数据 |
 | funds.go | 基金CRUD、持仓管理、权重验证 |
 | results.go | 回测结果/基金结果CRUD、JSON/CSV导出 |
 | migrate.go | JSON→数据库迁移工具 |
@@ -579,7 +572,7 @@ API 返回的数值为字符串格式（如 `"0.2195"`），前端使用 `safePa
 ```bash
 go run ./cmd/dbcli/... tables                    # 列出所有表
 go run ./cmd/dbcli/... symbols                   # 列出品种
-go run ./cmd/dbcli/... strategies                # 列出策略
+go run ./cmd/dbcli/... strategies                # 列出策略（从代码注册表读取）
 go run ./cmd/dbcli/... funds                     # 列出基金
 go run ./cmd/dbcli/... results                   # 列出回测结果
 go run ./cmd/dbcli/... export <表名> json        # 导出为JSON

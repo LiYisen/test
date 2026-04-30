@@ -289,15 +289,15 @@
                         <div style="margin-top: 20px; text-align: center;"><button type="button" class="btn btn-primary" id="fundRunBtn" onclick="fundRunBacktest()">运行回测</button></div>
                     </div>
                     <div id="fundMessage"></div>
+                </div>
+                <div class="tab-content" id="tab-fund-results">
+                    <div class="card"><h2>基金回测结果</h2><div id="fundResultsList" class="loading">加载中...</div></div>
                     <div class="card hidden" id="fundStatsCard"><h2>回测结果统计</h2><div class="stats-grid" id="fundStatsGrid"></div></div>
                     <div class="card hidden" id="fundChartsCard"><h2>图表分析</h2><div class="chart-container"><canvas id="fundEquityChart"></canvas></div></div>
                     <div class="card hidden" id="fundPositionsCard">
                         <h2>品种表现</h2>
                         <div style="overflow-x: auto;"><table id="fundPositionsTable"><thead><tr><th>品种</th><th>策略</th><th>权重</th><th>总收益</th><th>胜率</th><th>交易天数</th></tr></thead><tbody></tbody></table></div>
                     </div>
-                </div>
-                <div class="tab-content" id="tab-fund-results">
-                    <div class="card"><h2>基金回测结果</h2><div id="fundResultsList" class="loading">加载中...</div></div>
                 </div>
                 <div class="tab-content" id="tab-fund-config">
                     <div class="card">
@@ -306,8 +306,6 @@
                             <div class="form-group"><label>基金ID</label><input type="text" id="newFundId" placeholder="如: fund_001"></div>
                             <div class="form-group"><label>基金名称</label><input type="text" id="newFundName" placeholder="如: 趋势跟踪基金"></div>
                             <div class="form-group"><label>描述</label><input type="text" id="newFundDesc" placeholder="基金策略描述"></div>
-                            <div class="form-group"><label>默认开始日期</label><input type="date" id="newFundStartDate"></div>
-                            <div class="form-group"><label>默认结束日期</label><input type="date" id="newFundEndDate"></div>
                         </div>
                         <h3 style="color: var(--text-primary); margin: 20px 0 12px; font-size: 15px;">持仓品种配置</h3>
                         <div id="fundPositionList"></div>
@@ -749,7 +747,8 @@
             container.classList.remove('loading');
             if (fundList.length === 0) { container.innerHTML = '<div class="empty-state">暂无基金配置，请先创建基金</div>'; return; }
             container.innerHTML = fundList.map(function(f) {
-                return '<div class="fund-card' + (fundSelected && fundSelected.id === f.id ? ' selected' : '') + '" onclick="fundSelect(\'' + f.id + '\')"><div class="fund-name">' + escapeHtml(f.name) + '</div><div class="fund-desc">' + escapeHtml(f.description || '无描述') + '</div><div class="fund-meta"><span>ID: ' + escapeHtml(f.id) + '</span><span>品种数: ' + (f.positions ? f.positions.length : 0) + '</span><span>区间: ' + formatDateForDisplay(f.start_date) + ' ~ ' + formatDateForDisplay(f.end_date) + '</span></div></div>';
+                var dateRange = (f.start_date && f.end_date) ? '<span>区间: ' + formatDateForDisplay(f.start_date) + ' ~ ' + formatDateForDisplay(f.end_date) + '</span>' : '';
+                return '<div class="fund-card' + (fundSelected && fundSelected.id === f.id ? ' selected' : '') + '" onclick="fundSelect(\'' + f.id + '\')"><div class="fund-name">' + escapeHtml(f.name) + '</div><div class="fund-desc">' + escapeHtml(f.description || '无描述') + '</div><div class="fund-meta"><span>ID: ' + escapeHtml(f.id) + '</span><span>品种数: ' + (f.positions ? f.positions.length : 0) + '</span>' + dateRange + '</div></div>';
             }).join('');
         }
 
@@ -758,8 +757,16 @@
             fundRenderList();
             document.getElementById('fundBacktestConfigCard').classList.remove('hidden');
             if (fundSelected) {
-                document.getElementById('fundStartDate').value = formatDateForInput(fundSelected.start_date);
-                document.getElementById('fundEndDate').value = formatDateForInput(fundSelected.end_date);
+                if (fundSelected.start_date && fundSelected.end_date) {
+                    document.getElementById('fundStartDate').value = formatDateForInput(fundSelected.start_date);
+                    document.getElementById('fundEndDate').value = formatDateForInput(fundSelected.end_date);
+                } else {
+                    var today = new Date();
+                    var oneYearAgo = new Date(today);
+                    oneYearAgo.setFullYear(today.getFullYear() - 1);
+                    document.getElementById('fundStartDate').value = oneYearAgo.toISOString().split('T')[0];
+                    document.getElementById('fundEndDate').value = today.toISOString().split('T')[0];
+                }
             }
         };
 
@@ -848,6 +855,11 @@
             .catch(function(err) { showMessage('fundMessage', '加载结果失败: ' + err.message, 'error'); });
         }
 
+        function fundSwitchToResultsTab() {
+            var resultsTab = document.querySelector('#fundTabs .tab[data-tab="fund-results"]');
+            if (resultsTab) resultsTab.click();
+        }
+
         function fundDisplayFullResult(data) {
             document.getElementById('fundStatsCard').classList.remove('hidden');
             document.getElementById('fundChartsCard').classList.remove('hidden');
@@ -876,30 +888,7 @@
                 renderPositionsTable(data.position_results);
                 document.getElementById('fundPositionsCard').classList.remove('hidden');
             }
-        }
-
-        function fundDisplayResult(data) {
-            document.getElementById('fundStatsCard').classList.remove('hidden');
-            document.getElementById('fundChartsCard').classList.remove('hidden');
-            var stats = data.statistics || {};
-            var totalReturn = safeParseFloat(stats.total_return), annualReturn = safeParseFloat(stats.annual_return);
-            var maxDrawdownRatio = safeParseFloat(stats.max_drawdown_ratio), sharpeRatio = safeParseFloat(stats.sharpe_ratio);
-            var calmarRatio = safeParseFloat(stats.calmar_ratio), winRate = safeParseFloat(stats.win_rate);
-            var tradingDays = stats.trading_days != null ? stats.trading_days : '-';
-            var totalTrades = stats.total_trades != null ? stats.total_trades : '-';
-
-            document.getElementById('fundStatsGrid').innerHTML = [
-                { label: '总收益率', value: formatPercent(totalReturn), cls: totalReturn >= 0 ? 'positive' : 'negative' },
-                { label: '年化收益', value: formatPercent(annualReturn), cls: annualReturn >= 0 ? 'positive' : 'negative' },
-                { label: '最大回撤', value: formatPercent(maxDrawdownRatio), cls: 'negative' },
-                { label: '夏普比率', value: formatStatValue(sharpeRatio), cls: sharpeRatio > 0 ? 'positive' : '' },
-                { label: '卡玛比率', value: formatStatValue(calmarRatio), cls: calmarRatio > 0 ? 'positive' : '' },
-                { label: '胜率', value: formatPercent(winRate), cls: winRate > 0.5 ? 'positive' : '' },
-                { label: '交易天数', value: tradingDays, cls: '' },
-                { label: '总交易次数', value: totalTrades, cls: '' }
-            ].map(function(s) { return '<div class="stat-card ' + s.cls + '"><div class="value">' + escapeHtml(String(s.value)) + '</div><div class="label">' + escapeHtml(s.label) + '</div></div>'; }).join('');
-
-            loadResultDetails(data.id, data.fund_id);
+            fundSwitchToResultsTab();
         }
 
         function loadResultDetails(resultId, fundId) {
@@ -1040,9 +1029,6 @@
             })
             .then(function(data) {
                 fundDisplayFullResult(data);
-                switchPage('fund');
-                var backtestTab = document.querySelector('#fundTabs .tab[data-tab="fund-backtest"]');
-                if (backtestTab) backtestTab.click();
             })
             .catch(function(err) { showMessage('fundMessage', '加载结果失败: ' + err.message, 'error'); });
         };
@@ -1112,16 +1098,13 @@
             var id = document.getElementById('newFundId').value.trim();
             var name = document.getElementById('newFundName').value.trim();
             var desc = document.getElementById('newFundDesc').value.trim();
-            var startDate = document.getElementById('newFundStartDate').value;
-            var endDate = document.getElementById('newFundEndDate').value;
             if (!id || !name) { alert('请填写基金ID和名称'); return; }
             if (fundPositions.length === 0) { alert('请至少添加一个品种'); return; }
             var totalWeight = fundPositions.reduce(function(sum, p) { return sum + p.weight; }, 0);
             if (Math.abs(totalWeight - 1.0) > 0.001) { alert('权重总和必须为1.00，当前为' + totalWeight.toFixed(2)); return; }
             var config = {
                 id: id, name: name, description: desc,
-                start_date: startDate ? formatDateForApi(startDate) : '',
-                end_date: endDate ? formatDateForApi(endDate) : '',
+                start_date: '', end_date: '',
                 positions: fundPositions
             };
             fetch('/api/funds', {
@@ -1132,13 +1115,15 @@
             .then(function(r) { return r.json(); })
             .then(function(data) {
                 if (data.error) { alert('创建失败: ' + data.error); return; }
-                alert('基金创建成功！');
+                alert('基金创建成功！请在"基金回测"页面选择该基金并设置时间区间运行回测。');
                 fundPositions = [];
                 fundRenderPositions();
                 document.getElementById('newFundId').value = '';
                 document.getElementById('newFundName').value = '';
                 document.getElementById('newFundDesc').value = '';
                 fundLoadList();
+                var backtestTab = document.querySelector('#fundTabs .tab[data-tab="fund-backtest"]');
+                if (backtestTab) backtestTab.click();
             })
             .catch(function(err) { alert('创建失败: ' + err.message); });
         };

@@ -39,6 +39,10 @@ func NewServer() *Server {
 		log.Printf("初始化数据库失败: %v", err)
 	}
 
+	if err := db.MigrateFromJSON("config"); err != nil {
+		log.Printf("从JSON迁移配置数据失败: %v", err)
+	}
+
 	executor := pyexec.NewDefaultExecutor()
 	dataManager := data.NewFuturesDataManager(executor)
 

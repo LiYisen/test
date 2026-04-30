@@ -25,7 +25,6 @@ K线数据 → [信号层] → TradeSignal[] → [资金层] → DailyRecord[] /
 3. 创建适配器实现类型转换
 4. 实现 `StrategyFactory` 接口（Create/Name/GetParams/CreateRolloverHandler等）
 5. 在 `factory.go` 的 `init()` 中注册
-6. 更新 `config/strategies.json`
 
 ## 常见陷阱
 

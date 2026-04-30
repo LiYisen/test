@@ -12,11 +12,6 @@ type JSONSymbolsFile struct {
 	Symbols []Symbol `json:"symbols"`
 }
 
-type JSONStrategiesFile struct {
-	Strategies      []Strategy `json:"strategies"`
-	DefaultStrategy string     `json:"default_strategy"`
-}
-
 type JSONFundsFile struct {
 	Funds []Fund `json:"funds"`
 }
@@ -30,13 +25,6 @@ func MigrateFromJSON(configDir string) error {
 	if _, err := os.Stat(symbolsPath); err == nil {
 		if err := migrateSymbols(symbolsPath); err != nil {
 			return fmt.Errorf("迁移品种数据失败: %w", err)
-		}
-	}
-
-	strategiesPath := filepath.Join(configDir, "strategies.json")
-	if _, err := os.Stat(strategiesPath); err == nil {
-		if err := migrateStrategies(strategiesPath); err != nil {
-			return fmt.Errorf("迁移策略数据失败: %w", err)
 		}
 	}
 
@@ -68,32 +56,6 @@ func migrateSymbols(path string) error {
 	return WithTx(func(tx *sql.Tx) error {
 		return UpsertSymbolsTx(tx, file.Symbols)
 	})
-}
-
-func migrateStrategies(path string) error {
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return fmt.Errorf("读取文件失败: %w", err)
-	}
-
-	var file JSONStrategiesFile
-	if err := json.Unmarshal(data, &file); err != nil {
-		return fmt.Errorf("解析JSON失败: %w", err)
-	}
-
-	for _, s := range file.Strategies {
-		if err := UpsertStrategy(s); err != nil {
-			return fmt.Errorf("迁移策略 %s 失败: %w", s.Name, err)
-		}
-	}
-
-	if file.DefaultStrategy != "" {
-		if err := SetConfigMeta("default_strategy", file.DefaultStrategy); err != nil {
-			return fmt.Errorf("保存默认策略失败: %w", err)
-		}
-	}
-
-	return nil
 }
 
 func migrateFunds(path string) error {

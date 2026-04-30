@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"futures-backtest/internal/db"
+	"futures-backtest/internal/strategy"
 )
 
 func main() {
@@ -103,8 +104,8 @@ func printUsage() {
 }
 
 func listTables() {
-	tables := []string{"symbols", "strategies", "strategy_params", "funds", "fund_positions",
-		"backtest_results", "fund_results", "config_meta"}
+	tables := []string{"symbols", "funds", "fund_positions",
+		"backtest_results", "fund_results"}
 	fmt.Println("数据库表:")
 	for _, t := range tables {
 		fmt.Printf("  %s\n", t)
@@ -160,11 +161,7 @@ func searchSymbols(query string) {
 }
 
 func listStrategies() {
-	strategies, err := db.GetAllStrategies()
-	if err != nil {
-		fmt.Printf("查询策略失败: %v\n", err)
-		return
-	}
+	strategies := strategy.DefaultRegistry.ListConfigs()
 	fmt.Printf("共 %d 个策略:\n", len(strategies))
 	for _, s := range strategies {
 		enabled := "启用"

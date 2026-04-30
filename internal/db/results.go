@@ -308,13 +308,10 @@ func DeleteFundResultsByFundID(fundID string) error {
 
 var allowedExportTables = map[string]bool{
 	"symbols":          true,
-	"strategies":       true,
-	"strategy_params":  true,
 	"funds":            true,
 	"fund_positions":   true,
 	"backtest_results": true,
 	"fund_results":     true,
-	"config_meta":      true,
 }
 
 func validateTableName(tableName string) error {

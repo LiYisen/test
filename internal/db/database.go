@@ -71,37 +71,12 @@ func createTables(db *sql.DB) error {
 		`CREATE INDEX IF NOT EXISTS idx_symbols_exchange ON symbols(exchange)`,
 		`CREATE INDEX IF NOT EXISTS idx_symbols_pinyin ON symbols(pinyin)`,
 
-		`CREATE TABLE IF NOT EXISTS strategies (
-			name TEXT PRIMARY KEY,
-			display_name TEXT NOT NULL,
-			description TEXT NOT NULL DEFAULT '',
-			enabled INTEGER NOT NULL DEFAULT 1,
-			created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-			updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-		)`,
-
-		`CREATE TABLE IF NOT EXISTS strategy_params (
-			id INTEGER PRIMARY KEY AUTOINCREMENT,
-			strategy_name TEXT NOT NULL,
-			param_name TEXT NOT NULL,
-			display_name TEXT NOT NULL DEFAULT '',
-			type TEXT NOT NULL DEFAULT 'float',
-			default_value REAL NOT NULL DEFAULT 0,
-			min_value REAL NOT NULL DEFAULT 0,
-			max_value REAL NOT NULL DEFAULT 0,
-			description TEXT NOT NULL DEFAULT '',
-			sort_order INTEGER NOT NULL DEFAULT 0,
-			FOREIGN KEY (strategy_name) REFERENCES strategies(name) ON DELETE CASCADE,
-			UNIQUE(strategy_name, param_name)
-		)`,
-		`CREATE INDEX IF NOT EXISTS idx_strategy_params_strategy ON strategy_params(strategy_name)`,
-
 		`CREATE TABLE IF NOT EXISTS funds (
 			id TEXT PRIMARY KEY,
 			name TEXT NOT NULL,
 			description TEXT NOT NULL DEFAULT '',
-			start_date TEXT NOT NULL,
-			end_date TEXT NOT NULL,
+			start_date TEXT NOT NULL DEFAULT '',
+			end_date TEXT NOT NULL DEFAULT '',
 			created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
 			updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 		)`,
@@ -177,12 +152,6 @@ func createTables(db *sql.DB) error {
 			FOREIGN KEY (fund_id) REFERENCES funds(id) ON DELETE CASCADE
 		)`,
 		`CREATE INDEX IF NOT EXISTS idx_fund_results_fund ON fund_results(fund_id)`,
-
-		`CREATE TABLE IF NOT EXISTS config_meta (
-			key TEXT PRIMARY KEY,
-			value TEXT NOT NULL DEFAULT '',
-			updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-		)`,
 	}
 
 	for _, stmt := range statements {
