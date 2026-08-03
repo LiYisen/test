@@ -23,9 +23,9 @@ type PendingSignal struct {
 	Date      string
 }
 
-func NewMAStrategy(shortPeriod, longPeriod int, leverage float64) *MAStrategy {
+func NewMAStrategy(shortPeriod, longPeriod int, leverage float64) (*MAStrategy, error) {
 	if shortPeriod >= longPeriod {
-		panic("短期均线周期必须小于长期均线周期")
+		return nil, fmt.Errorf("短期均线周期(%d)必须小于长期均线周期(%d)", shortPeriod, longPeriod)
 	}
 
 	return &MAStrategy{
@@ -33,7 +33,7 @@ func NewMAStrategy(shortPeriod, longPeriod int, leverage float64) *MAStrategy {
 		shortPeriod:   shortPeriod,
 		longPeriod:    longPeriod,
 		leverage:      leverage,
-	}
+	}, nil
 }
 
 func (s *MAStrategy) getOrCreateStateManager(symbol string) *StateManager {
@@ -167,7 +167,10 @@ func (s *MAStrategy) GetMAsForSymbol(symbol string) (shortMA, longMA float64) {
 }
 
 func (s *MAStrategy) SimulateTrading(klines []backtest.KLineWithContract) *backtest.SignalPosition {
-	simStrategy := NewMAStrategy(s.shortPeriod, s.longPeriod, s.leverage)
+	simStrategy, err := NewMAStrategy(s.shortPeriod, s.longPeriod, s.leverage)
+	if err != nil {
+		return nil
+	}
 
 	for _, kl := range klines {
 		simStrategy.ProcessKLine(kl)

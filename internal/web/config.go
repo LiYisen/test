@@ -8,6 +8,7 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"sync"
 )
@@ -60,7 +61,7 @@ func LoadConfig() *Config {
 }
 
 func fetchSymbolsFromAkshare() {
-	cmd := exec.Command("python", "scripts/get_symbols.py")
+	cmd := exec.Command("python", filepath.Join(resolveProjectRoot(), "scripts", "get_symbols.py"))
 	cmd.Env = append(os.Environ(), "PYTHONIOENCODING=utf-8")
 	output, err := cmd.Output()
 	if err != nil {
@@ -105,7 +106,10 @@ func syncSymbolsToDB() {
 	configMu.RLock()
 	symbols := config.Symbols
 	configMu.RUnlock()
+	upsertSymbolsToDB(symbols)
+}
 
+func upsertSymbolsToDB(symbols []SymbolConfig) {
 	if len(symbols) == 0 {
 		return
 	}
@@ -150,7 +154,7 @@ func loadConfigFromDB() {
 }
 
 func loadConfigFromFile() {
-	file, err := os.Open("config/symbols.json")
+	file, err := os.Open(filepath.Join(resolveProjectRoot(), "config", "symbols.json"))
 	if err != nil {
 		return
 	}
@@ -170,7 +174,6 @@ func loadConfigFromFile() {
 
 func setDefaultSymbols() {
 	configMu.Lock()
-	defer configMu.Unlock()
 
 	config.Symbols = []SymbolConfig{
 		{Code: "RB", Name: "螺纹钢", Exchange: "SHFE", Pinyin: "lwg"},
@@ -235,30 +238,26 @@ func setDefaultSymbols() {
 		{Code: "TS", Name: "二年国债", Exchange: "CFFEX", Pinyin: "engz"},
 	}
 	log.Printf("使用默认品种列表，共 %d 个品种", len(config.Symbols))
-	syncSymbolsToDB()
+	symbols := config.Symbols
+	configMu.Unlock()
+	upsertSymbolsToDB(symbols)
 }
 
 func GetSymbols() []SymbolConfig {
+	LoadConfig()
 	configMu.RLock()
 	defer configMu.RUnlock()
-	if config == nil {
-		configMu.RUnlock()
-		LoadConfig()
-		configMu.RLock()
-	}
 	return config.Symbols
 }
 
 func SearchSymbols(query string) []SymbolConfig {
+	LoadConfig()
 	configMu.RLock()
 	defer configMu.RUnlock()
+	return doSearchSymbols(query)
+}
 
-	if config == nil {
-		configMu.RUnlock()
-		LoadConfig()
-		configMu.RLock()
-	}
-
+func doSearchSymbols(query string) []SymbolConfig {
 	if query == "" {
 		return config.Symbols
 	}

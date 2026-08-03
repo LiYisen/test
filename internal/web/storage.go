@@ -149,22 +149,34 @@ func (s *Server) loadResultFromDB(dbResult *db.BacktestResult) (*ResultData, err
 	}
 
 	if dbResult.Signals != "" && dbResult.Signals != "null" {
-		json.Unmarshal([]byte(dbResult.Signals), &result.Signals)
+		if err := json.Unmarshal([]byte(dbResult.Signals), &result.Signals); err != nil {
+			return nil, fmt.Errorf("反序列化signals失败: %w", err)
+		}
 	}
 	if dbResult.DailyRecords != "" && dbResult.DailyRecords != "null" {
-		json.Unmarshal([]byte(dbResult.DailyRecords), &result.DailyRecords)
+		if err := json.Unmarshal([]byte(dbResult.DailyRecords), &result.DailyRecords); err != nil {
+			return nil, fmt.Errorf("反序列化daily_records失败: %w", err)
+		}
 	}
 	if dbResult.PositionReturns != "" && dbResult.PositionReturns != "null" {
-		json.Unmarshal([]byte(dbResult.PositionReturns), &result.PositionReturns)
+		if err := json.Unmarshal([]byte(dbResult.PositionReturns), &result.PositionReturns); err != nil {
+			return nil, fmt.Errorf("反序列化position_returns失败: %w", err)
+		}
 	}
 	if dbResult.StateHistory != "" && dbResult.StateHistory != "null" {
-		json.Unmarshal([]byte(dbResult.StateHistory), &result.StateHistory)
+		if err := json.Unmarshal([]byte(dbResult.StateHistory), &result.StateHistory); err != nil {
+			return nil, fmt.Errorf("反序列化state_history失败: %w", err)
+		}
 	}
 	if dbResult.DominantMap != "" && dbResult.DominantMap != "null" {
-		json.Unmarshal([]byte(dbResult.DominantMap), &result.DominantMap)
+		if err := json.Unmarshal([]byte(dbResult.DominantMap), &result.DominantMap); err != nil {
+			return nil, fmt.Errorf("反序列化dominant_map失败: %w", err)
+		}
 	}
 	if dbResult.Klines != "" && dbResult.Klines != "null" {
-		json.Unmarshal([]byte(dbResult.Klines), &result.Klines)
+		if err := json.Unmarshal([]byte(dbResult.Klines), &result.Klines); err != nil {
+			return nil, fmt.Errorf("反序列化klines失败: %w", err)
+		}
 	}
 
 	return result, nil

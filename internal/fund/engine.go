@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"futures-backtest/internal/backtest"
+	"futures-backtest/internal/common"
 	"futures-backtest/internal/data"
 	"futures-backtest/internal/strategy"
 )
@@ -176,7 +177,13 @@ func (e *FundEngine) runPositionBacktest(posConfig PositionConfig, startDate, en
 		requiredTradingDays := warmupDays + 5
 		calendar, err := e.dataManager.GetTradeCalendar("20000101", startDate)
 		if err == nil && len(calendar) > 0 {
-			warmupStartDate = calculateWarmupStartDate(calendar, startDate, requiredTradingDays)
+			tradingDays := make([]string, 0)
+			for _, td := range calendar {
+				if td.IsTradingDay && td.Date < startDate {
+					tradingDays = append(tradingDays, td.Date)
+				}
+			}
+			warmupStartDate = common.CalculateWarmupStartDateFromList(tradingDays, startDate, requiredTradingDays)
 		} else {
 			warmupStart := start.AddDate(0, 0, -requiredTradingDays*2)
 			warmupStartDate = warmupStart.Format("20060102")
@@ -187,7 +194,7 @@ func (e *FundEngine) runPositionBacktest(posConfig PositionConfig, startDate, en
 		warmupStartDate = startDate
 	}
 
-	contractSymbols := generateContractSymbols(posConfig.Symbol, warmupStartDate, endDate)
+	contractSymbols := common.GenerateContractSymbols(posConfig.Symbol, warmupStartDate, endDate)
 
 	var allKlines []backtest.KLineWithContract
 	for _, cs := range contractSymbols {
@@ -235,33 +242,31 @@ func (e *FundEngine) runPositionBacktest(posConfig PositionConfig, startDate, en
 	rollover := factory.CreateRolloverHandler(sigStrategy)
 	stateRecorder := factory.CreateStateRecorder()
 
-	signalEngine := backtest.NewSignalEngine(allKlines, dominantMap, sigStrategy, rollover)
-	signalEngine.SetStateRecorder(stateRecorder)
-	signalEngine.SetWarmupDays(warmupDays, backtestStartDateFormatted)
+	btStrategy := sigStrategy.(backtest.SignalStrategy)
+	btRollover := rollover.(backtest.RolloverHandler)
+	btStateRecorder := stateRecorder.(backtest.StateRecorder)
 
-	signals, err := signalEngine.Calculate()
+	service := backtest.NewBacktestService()
+	btResult, err := service.Run(backtest.BacktestInput{
+		Klines:            allKlines,
+		DominantMap:       dominantMap,
+		Symbol:            posConfig.Symbol,
+		StartDate:         startDate,
+		EndDate:           endDate,
+		Strategy:          btStrategy,
+		Rollover:          btRollover,
+		StateRecorder:     btStateRecorder,
+		WarmupDays:        warmupDays,
+		BacktestStartDate: backtestStartDateFormatted,
+	})
 	if err != nil {
-		result.Error = fmt.Errorf("计算交易信号失败: %w", err)
+		result.Error = fmt.Errorf("回测执行失败: %w", err)
 		return result
 	}
 
-	dominantKlines := filterDominantKlines(allKlines, dominantMap)
-	portfolioEngine := backtest.NewPortfolioEngine()
-	dailyRecords, positionReturns, err := portfolioEngine.Calculate(signals, dominantKlines)
-	if err != nil {
-		result.Error = fmt.Errorf("计算资金收益失败: %w", err)
-		return result
-	}
-
-	stats := backtest.CalculateStatistics(dailyRecords, positionReturns)
-
-	if warmupDays > 0 {
-		dailyRecords = filterDailyRecordsByDate(dailyRecords, startDate)
-	}
-
-	result.Signals = signals
-	result.DailyRecords = dailyRecords
-	result.Statistics = stats
+	result.Signals = btResult.Signals
+	result.DailyRecords = btResult.DailyRecords
+	result.Statistics = btResult.Statistics
 
 	return result
 }
@@ -431,93 +436,4 @@ func calculateFundSharpeRatio(records []FundDailyRecord) float64 {
 	}
 
 	return sharpe * math.Sqrt(250)
-}
-
-func calculateWarmupStartDate(calendar []data.TradeDate, startDate string, requiredDays int) string {
-	startDateFormatted := formatDateForComparison(startDate)
-
-	var tradingDates []string
-	for _, td := range calendar {
-		if td.IsTradingDay && td.Date < startDateFormatted {
-			tradingDates = append(tradingDates, td.Date)
-		}
-	}
-	sort.Strings(tradingDates)
-
-	if len(tradingDates) < requiredDays {
-		return startDate
-	}
-
-	return tradingDates[len(tradingDates)-requiredDays]
-}
-
-func generateContractSymbols(product, startDate, endDate string) []string {
-	start, err := time.Parse("20060102", startDate)
-	if err != nil {
-		return []string{product}
-	}
-	end, err := time.Parse("20060102", endDate)
-	if err != nil {
-		return []string{product}
-	}
-
-	limitDate := end.AddDate(1, 0, 0)
-	limitYear := limitDate.Year()
-	limitMonth := int(limitDate.Month())
-
-	startYear := start.Year()
-	startMonth := int(start.Month()) + 1
-	if startMonth > 12 {
-		startMonth = 1
-		startYear++
-	}
-
-	seen := make(map[string]bool)
-	var symbols []string
-
-	year := startYear
-	month := startMonth
-	for {
-		if year > limitYear || (year == limitYear && month > limitMonth) {
-			return symbols
-		}
-		sym := fmt.Sprintf("%s%02d%02d", product, year%100, month)
-		if !seen[sym] {
-			seen[sym] = true
-			symbols = append(symbols, sym)
-		}
-		month++
-		if month > 12 {
-			month = 1
-			year++
-		}
-	}
-}
-
-func filterDominantKlines(klines []backtest.KLineWithContract, dominantMap map[string]string) []backtest.KLineWithContract {
-	var result []backtest.KLineWithContract
-	for _, kl := range klines {
-		if dominant, ok := dominantMap[kl.Date]; ok && dominant == kl.Symbol {
-			result = append(result, kl)
-		}
-	}
-	return result
-}
-
-func filterDailyRecordsByDate(records []backtest.DailyRecord, startDate string) []backtest.DailyRecord {
-	var result []backtest.DailyRecord
-	formattedStart := formatDateForComparison(startDate)
-	for _, r := range records {
-		if r.Date >= formattedStart {
-			result = append(result, r)
-		}
-	}
-	return result
-}
-
-func formatDateForComparison(date string) string {
-	if len(date) == 8 {
-		return date[:4] + "-" + date[4:6] + "-" + date[6:8]
-	}
-	return date
 }

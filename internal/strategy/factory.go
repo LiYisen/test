@@ -213,7 +213,10 @@ func (f *MAFactory) Create(params map[string]interface{}) SignalStrategy {
 		}
 	}
 
-	strategy := ma.NewMAStrategy(shortPeriod, longPeriod, leverage)
+	strategy, err := ma.NewMAStrategy(shortPeriod, longPeriod, leverage)
+	if err != nil {
+		return nil
+	}
 	return ma.NewMAAdapter(strategy)
 }
 

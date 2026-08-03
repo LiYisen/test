@@ -8,12 +8,26 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func mustNewMAStrategy(t *testing.T, shortPeriod, longPeriod int, leverage float64) *MAStrategy {
+	t.Helper()
+	s, err := NewMAStrategy(shortPeriod, longPeriod, leverage)
+	assert.NoError(t, err)
+	assert.NotNil(t, s)
+	return s
+}
+
 func TestNewMAStrategy(t *testing.T) {
-	strategy := NewMAStrategy(5, 20, 1.0)
+	strategy, err := NewMAStrategy(5, 20, 1.0)
+	assert.NoError(t, err)
 	assert.NotNil(t, strategy)
 	assert.Equal(t, 5, strategy.shortPeriod)
 	assert.Equal(t, 20, strategy.longPeriod)
 	assert.InDelta(t, 1.0, strategy.leverage, 0.0001)
+}
+
+func TestNewMAStrategy_InvalidParams(t *testing.T) {
+	_, err := NewMAStrategy(20, 5, 1.0)
+	assert.Error(t, err)
 }
 
 func TestStateManager_Update(t *testing.T) {
@@ -69,7 +83,7 @@ func TestStateManager_GetMAs(t *testing.T) {
 }
 
 func TestMAStrategy_ProcessKLine_NoPosition(t *testing.T) {
-	strategy := NewMAStrategy(3, 5, 1.0)
+	strategy := mustNewMAStrategy(t, 3, 5, 1.0)
 
 	klines := []backtest.KLineWithContract{
 		{Symbol: "RB2501", KLineData: backtest.KLineData{Date: "2026-01-01", Open: 100, Close: 100}},
@@ -86,7 +100,7 @@ func TestMAStrategy_ProcessKLine_NoPosition(t *testing.T) {
 }
 
 func TestMAStrategy_ProcessKLine_GoldenCross(t *testing.T) {
-	strategy := NewMAStrategy(3, 5, 1.0)
+	strategy := mustNewMAStrategy(t, 3, 5, 1.0)
 
 	for i := 0; i < 25; i++ {
 		kline := backtest.KLineWithContract{
@@ -114,7 +128,7 @@ func TestMAStrategy_ProcessKLine_GoldenCross(t *testing.T) {
 }
 
 func TestMAStrategy_ProcessKLine_DeathCross(t *testing.T) {
-	strategy := NewMAStrategy(3, 5, 1.0)
+	strategy := mustNewMAStrategy(t, 3, 5, 1.0)
 
 	for i := 0; i < 25; i++ {
 		kline := backtest.KLineWithContract{
@@ -142,12 +156,12 @@ func TestMAStrategy_ProcessKLine_DeathCross(t *testing.T) {
 }
 
 func TestMAStrategy_Position(t *testing.T) {
-	strategy := NewMAStrategy(3, 5, 1.0)
+	strategy := mustNewMAStrategy(t, 3, 5, 1.0)
 	assert.Nil(t, strategy.Position())
 }
 
 func TestMAStrategy_State(t *testing.T) {
-	strategy := NewMAStrategy(3, 5, 1.0)
+	strategy := mustNewMAStrategy(t, 3, 5, 1.0)
 
 	klines := []backtest.KLineWithContract{
 		{Symbol: "RB2501", KLineData: backtest.KLineData{Date: "2026-01-01", Close: 100}},
@@ -164,7 +178,7 @@ func TestMAStrategy_State(t *testing.T) {
 }
 
 func TestMAAdapter_ProcessKLine(t *testing.T) {
-	strategy := NewMAStrategy(3, 5, 1.0)
+	strategy := mustNewMAStrategy(t, 3, 5, 1.0)
 	adapter := NewMAAdapter(strategy)
 
 	kline := backtest.KLineWithContract{
@@ -181,7 +195,7 @@ func TestMAAdapter_ProcessKLine(t *testing.T) {
 }
 
 func TestMAAdapter_Position(t *testing.T) {
-	strategy := NewMAStrategy(3, 5, 1.0)
+	strategy := mustNewMAStrategy(t, 3, 5, 1.0)
 	adapter := NewMAAdapter(strategy)
 
 	pos := adapter.Position()
@@ -189,7 +203,7 @@ func TestMAAdapter_Position(t *testing.T) {
 }
 
 func TestMAAdapter_State(t *testing.T) {
-	strategy := NewMAStrategy(3, 5, 1.0)
+	strategy := mustNewMAStrategy(t, 3, 5, 1.0)
 	adapter := NewMAAdapter(strategy)
 
 	state := adapter.State()
@@ -198,7 +212,7 @@ func TestMAAdapter_State(t *testing.T) {
 }
 
 func TestRolloverHandler_CheckAndExecute_NoPosition(t *testing.T) {
-	strategy := NewMAStrategy(3, 5, 1.0)
+	strategy := mustNewMAStrategy(t, 3, 5, 1.0)
 	handler := NewRolloverHandler(strategy)
 
 	signals := handler.CheckAndExecute(
@@ -214,7 +228,7 @@ func TestRolloverHandler_CheckAndExecute_NoPosition(t *testing.T) {
 }
 
 func TestRolloverHandler_CheckAndExecute_WithPosition(t *testing.T) {
-	strategy := NewMAStrategy(3, 5, 1.0)
+	strategy := mustNewMAStrategy(t, 3, 5, 1.0)
 
 	strategy.ProcessKLine(backtest.KLineWithContract{
 		Symbol: "RB2501",

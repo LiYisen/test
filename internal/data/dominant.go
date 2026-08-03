@@ -2,6 +2,7 @@ package data
 
 import (
 	"fmt"
+	"log"
 	"time"
 
 	"futures-backtest/internal/backtest"
@@ -37,7 +38,7 @@ func (d *DominantContractIdentifier) Identify(product string, allKlines []backte
 	var currentVolume float64
 	var currentHold float64
 
-	fmt.Println("\n========== 主力合约切换记录 ==========")
+	log.Printf("主力合约切换记录开始")
 
 	for _, td := range calendar {
 		if !td.IsTradingDay {
@@ -58,7 +59,7 @@ func (d *DominantContractIdentifier) Identify(product string, allKlines []backte
 				if kl.Symbol == currentDominant {
 					currentVolume = kl.Volume
 					currentHold = kl.Hold
-					fmt.Printf("初始主力合约: %s | 日期: %s | 持仓量: %.0f | 成交量: %.0f\n",
+					log.Printf("初始主力合约: %s | 日期: %s | 持仓量: %.0f | 成交量: %.0f",
 						currentDominant, td.Date, currentHold, currentVolume)
 					break
 				}
@@ -66,10 +67,10 @@ func (d *DominantContractIdentifier) Identify(product string, allKlines []backte
 		} else {
 			newDominant, newVolume, newHold, oldVol, oldHold := findSwitchDominantContract(dayKlines, currentDominant)
 			if newDominant != "" && newDominant != currentDominant {
-				fmt.Printf("主力切换: %s -> %s | 日期: %s\n", currentDominant, newDominant, td.Date)
-				fmt.Printf("  旧主力 %s: 持仓量=%.0f, 成交量=%.0f\n", currentDominant, oldHold, oldVol)
-				fmt.Printf("  新主力 %s: 持仓量=%.0f, 成交量=%.0f\n", newDominant, newHold, newVolume)
-				fmt.Printf("  切换原因: 持仓量 %.0f > %.0f (%.1f%%), 成交量 %.0f > %.0f (%.1f%%)\n",
+				log.Printf("主力切换: %s -> %s | 日期: %s", currentDominant, newDominant, td.Date)
+			log.Printf("  旧主力 %s: 持仓量=%.0f, 成交量=%.0f", currentDominant, oldHold, oldVol)
+			log.Printf("  新主力 %s: 持仓量=%.0f, 成交量=%.0f", newDominant, newHold, newVolume)
+				log.Printf("  切换原因: 持仓量 %.0f > %.0f (%.1f%%), 成交量 %.0f > %.0f (%.1f%%)",
 					newHold, oldHold, (newHold-oldHold)/oldHold*100,
 					newVolume, oldVol, (newVolume-oldVol)/oldVol*100)
 				currentDominant = newDominant
@@ -93,7 +94,7 @@ func (d *DominantContractIdentifier) Identify(product string, allKlines []backte
 		result[t] = currentDominant
 	}
 
-	fmt.Println("========================================\n")
+	log.Printf("主力合约切换记录结束，共 %d 条记录", len(result))
 
 	return result, nil
 }

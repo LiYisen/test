@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"futures-backtest/internal/backtest"
+	"futures-backtest/internal/common"
 	"futures-backtest/internal/data"
 	"futures-backtest/internal/strategy"
 )
@@ -32,15 +33,14 @@ func main() {
 		*symbol, *startDate, *endDate, *leverage, *strategyName)
 	fmt.Println()
 
-	// 使用策略工厂创建策略
 	factory, err := strategy.DefaultRegistry.Get(*strategyName)
 	if err != nil {
 		log.Fatalf("获取策略失败: %v", err)
 	}
 
-	strategyInstance := factory.Create(map[string]interface{}{
+	params := map[string]interface{}{
 		"leverage": *leverage,
-	})
+	}
 
 	fmt.Printf("[0/5] 策略初始化完成: %s\n", factory.Description())
 
@@ -53,7 +53,7 @@ func main() {
 	}
 	fmt.Printf("[2/5] 获取交易日历完成，共 %d 天\n", len(calendar))
 
-	contractSymbols := generateContractSymbols(*symbol, *startDate, *endDate)
+	contractSymbols := common.GenerateContractSymbols(*symbol, *startDate, *endDate)
 	fmt.Printf("[3/5] 待查询合约列表: %v\n", contractSymbols)
 
 	var allKlines []backtest.KLineWithContract
@@ -100,88 +100,49 @@ func main() {
 	}
 	fmt.Printf("[4/5] 识别主力合约完成，共 %d 天\n", len(dominantMap))
 
-	rollover := factory.CreateRolloverHandler(strategyInstance)
+	warmupDays := factory.GetWarmupDays(params)
+	backtestStartDate := ""
+	if warmupDays > 0 {
+		start, _ := time.Parse("20060102", *startDate)
+		backtestStartDate = start.Format("2006-01-02")
+	}
+
+	sigStrategy := factory.Create(params)
+	rollover := factory.CreateRolloverHandler(sigStrategy)
 	stateRecorder := factory.CreateStateRecorder()
 
-	signalEngine := backtest.NewSignalEngine(allKlines, dominantMap, strategyInstance, rollover)
-	signalEngine.SetStateRecorder(stateRecorder)
+	btStrategy := sigStrategy.(backtest.SignalStrategy)
+	btRollover := rollover.(backtest.RolloverHandler)
+	btStateRecorder := stateRecorder.(backtest.StateRecorder)
 
-	signals, err := signalEngine.Calculate()
+	service := backtest.NewBacktestService()
+	result, err := service.Run(backtest.BacktestInput{
+		Klines:            allKlines,
+		DominantMap:       dominantMap,
+		Symbol:            *symbol,
+		StartDate:         *startDate,
+		EndDate:           *endDate,
+		Strategy:          btStrategy,
+		Rollover:          btRollover,
+		StateRecorder:     btStateRecorder,
+		WarmupDays:        warmupDays,
+		BacktestStartDate: backtestStartDate,
+	})
 	if err != nil {
-		log.Fatalf("计算交易信号失败: %v", err)
+		log.Fatalf("回测执行失败: %v", err)
 	}
-	fmt.Printf("[5/5] 计算交易信号完成，共 %d 条信号\n", len(signals))
 
-	dominantKlines := filterDominantKlines(allKlines, dominantMap)
-	portfolioEngine := backtest.NewPortfolioEngine()
-	dailyRecords, positionReturns, err := portfolioEngine.Calculate(signals, dominantKlines)
-	if err != nil {
-		log.Fatalf("计算资金收益失败: %v", err)
-	}
-	fmt.Printf("[6/6] 计算资金收益完成，共 %d 条持仓记录\n", len(positionReturns))
+	fmt.Printf("[5/5] 计算交易信号完成，共 %d 条信号\n", len(result.Signals))
+	fmt.Printf("[6/6] 计算资金收益完成，共 %d 条持仓记录\n", len(result.PositionReturns))
 
-	stats := backtest.CalculateStatistics(dailyRecords, positionReturns)
-	stats.Print()
+	result.Statistics.Print()
 
-	dailyDetails := backtest.GenerateDailyDetails(dailyRecords, signals, dominantKlines, dominantMap)
+	dailyDetails := backtest.GenerateDailyDetails(result.DailyRecords, result.Signals, result.Klines, result.DominantMap)
 	backtest.PrintDailyDetails(dailyDetails)
-	backtest.PrintPositionReturns(positionReturns)
+	backtest.PrintPositionReturns(result.PositionReturns)
 
-	reporter := backtest.NewReporter(signals)
-	reporter.SetStateHistory(stateRecorder.GetStateHistory())
+	reporter := backtest.NewReporter(result.Signals)
+	reporter.SetStateHistory(result.StateHistory)
 	reporter.PrintSignals()
 	reporter.PrintStateHistory()
-}
-
-func generateContractSymbols(product, startDate, endDate string) []string {
-	start, err := time.Parse("20060102", startDate)
-	if err != nil {
-		return []string{product}
-	}
-	end, err := time.Parse("20060102", endDate)
-	if err != nil {
-		return []string{product}
-	}
-
-	limitDate := end.AddDate(1, 0, 0)
-	limitYear := limitDate.Year()
-	limitMonth := int(limitDate.Month())
-
-	startYear := start.Year()
-	startMonth := int(start.Month()) + 1
-	if startMonth > 12 {
-		startMonth = 1
-		startYear++
-	}
-
-	seen := make(map[string]bool)
-	var symbols []string
-
-	year := startYear
-	month := startMonth
-	for {
-		if year > limitYear || (year == limitYear && month > limitMonth) {
-			return symbols
-		}
-		sym := fmt.Sprintf("%s%02d%02d", product, year%100, month)
-		if !seen[sym] {
-			seen[sym] = true
-			symbols = append(symbols, sym)
-		}
-		month++
-		if month > 12 {
-			month = 1
-			year++
-		}
-	}
-}
-
-func filterDominantKlines(allKlines []backtest.KLineWithContract, dominantMap map[string]string) []backtest.KLineWithContract {
-	var dominantKlines []backtest.KLineWithContract
-	for _, kl := range allKlines {
-		if dominant, ok := dominantMap[kl.Date]; ok && dominant == kl.Symbol {
-			dominantKlines = append(dominantKlines, kl)
-		}
-	}
-	return dominantKlines
 }

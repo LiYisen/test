@@ -41,8 +41,8 @@ func initDatabase(dbPath string) error {
 		return fmt.Errorf("打开数据库失败: %w", err)
 	}
 
-	db.SetMaxOpenConns(1)
-	db.SetMaxIdleConns(1)
+	db.SetMaxOpenConns(4)
+	db.SetMaxIdleConns(2)
 
 	if err := db.Ping(); err != nil {
 		db.Close()
