@@ -139,59 +139,6 @@ func TestSearchSymbols(t *testing.T) {
 	}
 }
 
-func TestStrategyCRUD(t *testing.T) {
-	setupTestDB(t)
-	defer teardownTestDB(t)
-
-	s := Strategy{
-		Name:        "test_strategy",
-		DisplayName: "测试策略",
-		Description: "用于测试的策略",
-		Enabled:     true,
-		Params: []StrategyParam{
-			{Name: "period", DisplayName: "周期", Type: "int", Default: 10, Min: 1, Max: 100, Description: "计算周期"},
-			{Name: "leverage", DisplayName: "杠杆", Type: "float", Default: 3.0, Min: 0.1, Max: 10.0, Description: "杠杆系数"},
-		},
-	}
-
-	if err := UpsertStrategy(s); err != nil {
-		t.Fatalf("UpsertStrategy 失败: %v", err)
-	}
-
-	got, err := GetStrategyByName("test_strategy")
-	if err != nil {
-		t.Fatalf("GetStrategyByName 失败: %v", err)
-	}
-	if got == nil {
-		t.Fatal("GetStrategyByName 返回 nil")
-	}
-	if got.DisplayName != "测试策略" {
-		t.Errorf("策略显示名称不匹配: got=%s, want=测试策略", got.DisplayName)
-	}
-	if len(got.Params) != 2 {
-		t.Errorf("策略参数数量不匹配: got=%d, want=2", len(got.Params))
-	}
-	if got.Params[0].Name != "period" {
-		t.Errorf("第一个参数名称不匹配: got=%s, want=period", got.Params[0].Name)
-	}
-
-	all, err := GetAllStrategies()
-	if err != nil {
-		t.Fatalf("GetAllStrategies 失败: %v", err)
-	}
-	if len(all) != 1 {
-		t.Errorf("GetAllStrategies 数量不匹配: got=%d, want=1", len(all))
-	}
-
-	if err := DeleteStrategy("test_strategy"); err != nil {
-		t.Fatalf("DeleteStrategy 失败: %v", err)
-	}
-	got, _ = GetStrategyByName("test_strategy")
-	if got != nil {
-		t.Error("DeleteStrategy 后策略仍存在")
-	}
-}
-
 func TestFundCRUD(t *testing.T) {
 	setupTestDB(t)
 	defer teardownTestDB(t)
@@ -396,36 +343,6 @@ func TestFundResultCRUD(t *testing.T) {
 	}
 }
 
-func TestConfigMeta(t *testing.T) {
-	setupTestDB(t)
-	defer teardownTestDB(t)
-
-	if err := SetConfigMeta("default_strategy", "yinyang"); err != nil {
-		t.Fatalf("SetConfigMeta 失败: %v", err)
-	}
-
-	got, err := GetConfigMeta("default_strategy")
-	if err != nil {
-		t.Fatalf("GetConfigMeta 失败: %v", err)
-	}
-	if got != "yinyang" {
-		t.Errorf("配置值不匹配: got=%s, want=yinyang", got)
-	}
-
-	if err := SetConfigMeta("default_strategy", "ma"); err != nil {
-		t.Fatalf("SetConfigMeta 更新失败: %v", err)
-	}
-	got, _ = GetConfigMeta("default_strategy")
-	if got != "ma" {
-		t.Errorf("配置值更新不匹配: got=%s, want=ma", got)
-	}
-
-	val, _ := GetConfigMeta("nonexistent")
-	if val != "" {
-		t.Errorf("不存在的配置应返回空字符串: got=%s", val)
-	}
-}
-
 func TestExportTable(t *testing.T) {
 	setupTestDB(t)
 	defer teardownTestDB(t)
@@ -478,9 +395,9 @@ func TestExportTableSQLInjection(t *testing.T) {
 		t.Errorf("ExportTableToJSON 应允许合法表名 backtest_results: %v", err)
 	}
 
-	csvData, err := ExportTableToCSV("config_meta")
+	csvData, err := ExportTableToCSV("funds")
 	if err != nil {
-		t.Errorf("ExportTableToCSV 应允许合法表名 config_meta: %v", err)
+		t.Errorf("ExportTableToCSV 应允许合法表名 funds: %v", err)
 	}
 	_ = jsonData
 	_ = csvData
